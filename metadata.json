@@ -1,0 +1,6 @@
+{
+  "name": "Registro y Extracción de Documentos de Tránsito",
+  "description": "Aplicación para escanear y extraer información estructurada de documentos de tránsito (facturas, RUNT, identificaciones, poderes) y enviarlos a otros sistemas mediante una API configurable.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

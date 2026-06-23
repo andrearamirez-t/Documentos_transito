@@ -1,0 +1,231 @@
+{
+  "info": {
+    "name": "API Trámites de Tránsito",
+    "description": "API para extracción, validación y sincronización de documentos de tránsito colombianos (Cédula, Factura, RUNT, Gases, Poder).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Documentos",
+      "description": "Gestión del historial local de documentos analizados.",
+      "item": [
+        {
+          "name": "Listar todos los documentos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/documents",
+            "description": "Retorna todos los documentos procesados almacenados en la base de datos local."
+          }
+        },
+        {
+          "name": "Eliminar un documento",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/documents/:id",
+            "description": "Elimina un documento del historial local por su ID.",
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/doc_1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "doc_1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Análisis con IA (Gemini)",
+      "description": "Extracción de datos de documentos de tránsito usando IA.",
+      "item": [
+        {
+          "name": "Analizar muestra precargada (sin API Key)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/documents/analyze",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sampleKey\": \"sample_factura\",\n  \"fileName\": \"Factura Éxito Mosquera.pdf\"\n}"
+            },
+            "description": "Analiza una muestra precargada sin necesitar API Key de Gemini.\n\nsampleKey puede ser:\n- sample_cedula\n- sample_factura\n- sample_runt\n- sample_gases\n- sample_poder"
+          }
+        },
+        {
+          "name": "Analizar imagen en Base64 (requiere API Key Gemini)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/documents/analyze",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"base64\": \"<BASE64_DE_LA_IMAGEN_SIN_PREFIJO_DATA_URL>\",\n  \"mimeType\": \"image/jpeg\",\n  \"fileName\": \"cedula_brayan.jpg\"\n}"
+            },
+            "description": "Envía un documento como base64 para que Gemini extraiga los datos automáticamente.\n\nmimeType soportados: image/jpeg, image/png, image/webp, application/pdf\n\nRequiere GEMINI_API_KEY configurada en .env"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validación",
+      "description": "Valida que un payload tenga todos los campos obligatorios según el tipo de documento. Útil para verificar antes de sincronizar.",
+      "item": [
+        {
+          "name": "Validar Cédula",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"cedula\",\n  \"extractedData\": {\n    \"nombreCompleto\": \"BRAYAN CAMILO SALGADO JIMENEZ\",\n    \"numeroDocumento\": \"1.233.498.817\",\n    \"fechaNacimiento\": \"1998-07-18\",\n    \"sexo\": \"M\",\n    \"rh\": \"O+\",\n    \"estatura\": \"1.77 m\",\n    \"contacto\": {\n      \"celular\": \"3102389606\",\n      \"correo\": \"SalgadoBS98@gmail.com\",\n      \"direccion\": \"Cl 24E # 1-147, Madrid Cundinamarca\"\n    }\n  }\n}"
+            },
+            "description": "Campos obligatorios para CÉDULA:\n- nombreCompleto\n- numeroDocumento\n- fechaNacimiento\n- sexo\n\nRespuesta 200 = válido | Respuesta 422 = faltan campos"
+          }
+        },
+        {
+          "name": "Validar Cédula con campos faltantes (ejemplo de error)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"cedula\",\n  \"extractedData\": {\n    \"nombreCompleto\": \"BRAYAN CAMILO SALGADO JIMENEZ\"\n  }\n}"
+            },
+            "description": "Ejemplo que retorna 422 con los campos que faltan detallados."
+          }
+        },
+        {
+          "name": "Validar Factura",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"factura\",\n  \"extractedData\": {\n    \"numeroFactura\": \"RZ2173627\",\n    \"fecha\": \"2026-06-06T15:59:24\",\n    \"compradorNombre\": \"BRAYAN CAMILO SALGADO JIMENEZ\",\n    \"compradorIdentificacion\": \"1233498817\",\n    \"vehiculoMarca\": \"ART - VOGE\",\n    \"vehiculoLinea\": \"300RALLY\",\n    \"vehiculoModelo\": \"2027\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoColor\": \"GRIS\",\n    \"valorTotal\": 17590000\n  }\n}"
+            },
+            "description": "Campos obligatorios para FACTURA:\n- numeroFactura\n- fecha\n- compradorNombre\n- compradorIdentificacion\n- vehiculoMarca\n- vehiculoLinea\n- vehiculoModelo\n- vehiculoMotor\n- vehiculoChasis\n- valorTotal"
+          }
+        },
+        {
+          "name": "Validar RUNT",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"runt\",\n  \"extractedData\": {\n    \"tramiteSolicitado\": \"Traspaso de Propiedad\",\n    \"propietarioNombre\": \"Brayan Camilo Salgado Jimenez\",\n    \"propietarioIdentificacion\": \"1233498817\",\n    \"vehiculoMarca\": \"ART-VOGE\",\n    \"vehiculoLinea\": \"300Rally\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoModelo\": \"2027\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoColor\": \"Gris\"\n  }\n}"
+            },
+            "description": "Campos obligatorios para RUNT:\n- tramiteSolicitado\n- propietarioNombre\n- propietarioIdentificacion\n- vehiculoMarca\n- vehiculoLinea\n- vehiculoMotor\n- vehiculoChasis"
+          }
+        },
+        {
+          "name": "Validar Certificado de Gases",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"gases\",\n  \"extractedData\": {\n    \"tipoCertificado\": \"Certificado de Empadronamiento y Emisiones\",\n    \"fechaCertificado\": \"2026-04-11\",\n    \"vehiculoMarca\": \"AKT-VOGE\",\n    \"vehiculoLinea\": \"300RALLY\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoModelo\": \"2027\"\n  }\n}"
+            },
+            "description": "Campos obligatorios para GASES/EMPADRONAMIENTO:\n- tipoCertificado\n- fechaCertificado\n- vehiculoMarca\n- vehiculoChasis\n- vehiculoMotor\n- vehiculoCilindrada"
+          }
+        },
+        {
+          "name": "Validar Poder Notarial",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/validate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"poder\",\n  \"extractedData\": {\n    \"otorganteNombre\": \"Brayan Camilo Salgado Jimenez\",\n    \"otorganteIdentificacion\": \"1233498817\",\n    \"apoderadoNombre\": \"TRANSITEMOS\",\n    \"tramitesAutorizados\": [\"Matrícula Inicial\", \"Inscripción de Alerta\", \"Traspaso\"]\n  }\n}"
+            },
+            "description": "Campos obligatorios para PODER:\n- otorganteNombre\n- otorganteIdentificacion\n- apoderadoNombre\n- tramitesAutorizados (array no vacío)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sincronización",
+      "description": "Envía documentos procesados al sistema destino vía API REST.",
+      "item": [
+        {
+          "name": "Sincronizar documento por ID",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/sync/doc_1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "sync", "doc_1"]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetUrl\": \"http://localhost:3000/api/external-system-mock\"\n}"
+            },
+            "description": "Envía un documento por su ID al endpoint destino configurado.\n\ntargetUrl es opcional. Si se omite, usa el mock local.\n\nEl servidor hace un HTTP POST real al targetUrl con el payload estructurado."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sistema Destino (Mock)",
+      "description": "Simula la base de datos de otro sistema que recibe los documentos. Incluye validación de campos obligatorios.",
+      "item": [
+        {
+          "name": "Registrar documento (con validación)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/external-system-mock",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"DOCUMENT_REGISTRATION\",\n  \"sourceApp\": \"Registro de Tránsito Sincronizador\",\n  \"payloadId\": \"pay_test_001\",\n  \"documentId\": \"doc_test_001\",\n  \"documentType\": \"factura\",\n  \"scannedAt\": \"2026-06-23T10:00:00.000Z\",\n  \"syncedAt\": \"2026-06-23T10:01:00.000Z\",\n  \"extractedData\": {\n    \"numeroFactura\": \"RZ2173627\",\n    \"fecha\": \"2026-06-06T15:59:24\",\n    \"compradorNombre\": \"BRAYAN CAMILO SALGADO JIMENEZ\",\n    \"compradorIdentificacion\": \"1233498817\",\n    \"vehiculoMarca\": \"ART - VOGE\",\n    \"vehiculoLinea\": \"300RALLY\",\n    \"vehiculoModelo\": \"2027\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoColor\": \"GRIS\",\n    \"valorTotal\": 17590000\n  },\n  \"confidence\": 0.98,\n  \"summary\": \"Factura de compra moto VOGE 300Rally\"\n}"
+            },
+            "description": "Recibe un documento y lo registra en la base de datos del sistema destino.\n\nRespuestas:\n- 201: Registrado exitosamente\n- 400: Falta documentType o extractedData\n- 422: Faltan campos obligatorios (detalla cuáles)"
+          }
+        },
+        {
+          "name": "Registrar documento con campos faltantes (ejemplo 422)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/external-system-mock",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"factura\",\n  \"extractedData\": {\n    \"numeroFactura\": \"RZ2173627\",\n    \"compradorNombre\": \"BRAYAN CAMILO SALGADO JIMENEZ\"\n  }\n}"
+            },
+            "description": "Ejemplo que retorna 422 indicando exactamente qué campos obligatorios faltan."
+          }
+        },
+        {
+          "name": "Ver todos los registros del sistema destino",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/external-system-db",
+            "description": "Lista todos los registros que han llegado al sistema destino via sincronización."
+          }
+        },
+        {
+          "name": "Vaciar base de datos del sistema destino",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/external-system-db/clear",
+            "description": "Limpia todos los registros del sistema destino (útil para pruebas)."
+          }
+        }
+      ]
+    }
+  ]
+}
