@@ -10,16 +10,17 @@ import ActiveDocumentDetail from "./components/ActiveDocumentDetail";
 import DocumentList from "./components/DocumentList";
 import ExternalDatabaseView from "./components/ExternalDatabaseView";
 import NetworkLogModal from "./components/NetworkLogModal";
-import { 
-  FileText, ShieldAlert, Cpu, Network, CheckCircle, Database, HelpCircle, 
-  Settings, Key, AlertTriangle, Eye, ArrowRight, BookOpen, Clock, Info, ExternalLink,
-  RefreshCw
+import {
+  Cpu, Settings, BookOpen, Clock, Info, ExternalLink,
+  RefreshCw, Moon, Sun, ChevronDown, ChevronUp
 } from "lucide-react";
 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [externalRecords, setExternalRecords] = useState<ExternalRecord[]>([]);
   const [activeDocId, setActiveDocId] = useState<string | undefined>(undefined);
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [activeTramiteId, setActiveTramiteId] = useState<string | null>(null);
   
   // Estados de carga (loaders)
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -31,12 +32,27 @@ export default function App() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") === "dark");
+  const [showHistory, setShowHistory] = useState(() => localStorage.getItem("showHistory") !== "false");
 
   // Endpoint configurable de API
-  const [targetApiUrl, setTargetApiUrl] = useState("http://localhost:3000/api/external-system-mock");
+  const [targetApiUrl, setTargetApiUrl] = useState(() => {
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    return isLocal
+      ? "http://localhost:3000/api/external-system-mock"
+      : `${window.location.origin}/api/external-system-mock`;
+  });
   const [savedSettingsMsg, setSavedSettingsMsg] = useState("");
 
   const activeDoc = documents.find((d) => d.id === activeDocId) || null;
+
+  // Al cambiar el filtro de tipo, auto-seleccionar el primer documento que coincida
+  useEffect(() => {
+    if (filterType) {
+      const firstMatch = documents.find((d) => d.documentType === filterType);
+      if (firstMatch) setActiveDocId(firstMatch.id);
+    }
+  }, [filterType]);
 
   // Cargar datos iniciales al arrancar la app
   useEffect(() => {
@@ -96,79 +112,37 @@ export default function App() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || errData.details || "Fallo en la comunicación con la IA");
+        const msg = [errData.error, errData.details].filter(Boolean).join(" — ");
+        throw new Error(msg || "Fallo en la comunicación con la IA");
       }
 
-      const newRecord = await res.json();
-      setDocuments((prev) => [newRecord, ...prev]);
-      setActiveDocId(newRecord.id);
+      const result = await res.json();
+      const newRecords = Array.isArray(result) ? result : [result];
+      setDocuments((prev) => [...newRecords, ...prev]);
+      setActiveDocId(newRecords[0].id);
+      setActiveTramiteId(newRecords[0].tramiteId || null);
     } catch (error: any) {
-      alert(`Error de Procesamiento: ${error.message}\n\n${error.hint || "Por favor, configure su API Key de Gemini en el panel Settings > Secrets de AI Studio."}`);
+      alert(`Error al analizar el documento:\n\n${error.message}`);
     } finally {
       setIsAnalyzing(false);
       setAnalyzeMsg("");
     }
   };
 
-  // 2. Analizar muestra precargada de prueba (1-Click instantáneo)
-  const handleSelectSample = async (sampleKey: string, fileName: string) => {
-    setIsAnalyzing(true);
-    setAnalyzeMsg("Despachando muestra de tránsito para simulación de lectura...");
-    
-    // Darle un aire de realismo
-    const steps = [
-      "Precargando imagen seleccionada por el usuario...",
-      "Enviando documento de demostración de Brayan Salgado a la API...",
-      "Interpretando datos del RUNT y del comprador electrónico...",
-      "Generando payload seguro para la API destino...",
-    ];
-
-    let stepIndex = 0;
-    const interval = setInterval(() => {
-      stepIndex++;
-      if (stepIndex < steps.length) {
-        setAnalyzeMsg(steps[stepIndex]);
-      }
-    }, 850);
-
-    try {
-      const res = await fetch("/api/documents/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleKey, fileName }),
-      });
-
-      clearInterval(interval);
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Fallo de respuesta del servidor");
-      }
-
-      const newRecord = await res.json();
-      setDocuments((prev) => [newRecord, ...prev]);
-      setActiveDocId(newRecord.id);
-    } catch (error: any) {
-      alert(`Error al procesar la muestra: ${error.message}`);
-    } finally {
-      setIsAnalyzing(false);
-      setAnalyzeMsg("");
-    }
-  };
-
-  // 3. Modificar datos de forma local antes de enviar por la API
-  const handleUpdateDocumentData = (id: string, updatedData: any) => {
+  // 2. Guardar cambios de datos — actualiza estado local Y persiste en el servidor
+  const handleUpdateDocumentData = async (id: string, updatedData: any) => {
     setDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id === id) {
-          return {
-            ...doc,
-            extractedData: updatedData,
-          };
-        }
-        return doc;
-      })
+      prev.map((doc) => (doc.id === id ? { ...doc, extractedData: updatedData } : doc))
     );
+    try {
+      await fetch(`/api/documents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extractedData: updatedData }),
+      });
+    } catch (e) {
+      console.error("Error guardando en servidor:", e);
+    }
   };
 
   // 4. Sincronizar vía API al sistema externo
@@ -231,18 +205,31 @@ export default function App() {
     }
   };
 
-  // 6. Eliminar documento del historial
+  // 6. Eliminar un documento del historial
   const handleDeleteDocument = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       await fetch(`/api/documents/${id}`, { method: "DELETE" });
       setDocuments((prev) => prev.filter((d) => d.id !== id));
-      if (activeDocId === id) {
-        setActiveDocId(undefined);
-      }
+      if (activeDocId === id) setActiveDocId(undefined);
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // 7. Eliminar todos los documentos de un trámite completo
+  const handleDeleteTramite = async (tramiteId: string) => {
+    const toDelete = documents.filter((d) => (d.tramiteId || d.id) === tramiteId);
+    await Promise.all(toDelete.map((d) => fetch(`/api/documents/${d.id}`, { method: "DELETE" })));
+    setDocuments((prev) => prev.filter((d) => (d.tramiteId || d.id) !== tramiteId));
+    if (toDelete.some((d) => d.id === activeDocId)) setActiveDocId(undefined);
+  };
+
+  // 8. Nuevo trámite — limpia la sesión activa sin borrar el historial
+  const handleNuevoTramite = () => {
+    setActiveDocId(undefined);
+    setActiveTramiteId(null);
+    setFilterType(null);
   };
 
   const refreshExternalDb = async () => {
@@ -260,48 +247,65 @@ export default function App() {
     }
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSavedSettingsMsg("¡Configuración de API guardada!");
     setTimeout(() => setSavedSettingsMsg(""), 3000);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased">
+    <div className={`min-h-screen flex flex-col font-sans antialiased transition-colors duration-200 ${isDark ? "dark bg-slate-950 text-slate-100" : "bg-slate-100 text-slate-800"}`}>
       
       {/* HEADER DE LA APLICACIÓN */}
-      <header className="bg-white border-b border-slate-150 sticky top-0 z-40 px-6 py-4 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="bg-blue-600 text-white p-2.5 rounded-2xl shadow-blue-100 shadow-md">
-              <Cpu className="w-6 h-6 animate-pulse" />
+      <header className={`sticky top-0 z-40 px-6 py-3 shadow-md ${isDark ? "bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700" : "bg-gradient-to-r from-blue-700 to-blue-600"}`}>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl ${isDark ? "bg-blue-600" : "bg-white/20"}`}>
+              <Cpu className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900" id="app-title-main">
-                Scanner & Sincronizador de Trámites de Tránsito
+              <h1 className="text-base font-black tracking-tight text-white" id="app-title-main">
+                Scanner & Sincronizador · Trámites de Tránsito
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Digitalización inteligente de Cédulas, Facturas, RUNT, Gases y Poderes con envío vía REST API.
+              <p className="text-[11px] text-blue-200 font-medium">
+                Cédulas · Facturas · RUNT · Gases · Poderes — REST API v1.0
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
+            <a
+              href="/api-docs"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-all border border-white/20"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              API Docs
+            </a>
+
             <button
               onClick={() => setShowHelpModal(true)}
-              className="p-2 px-4 border border-blue-100 hover:border-blue-200 bg-blue-50/50 hover:bg-blue-50 text-blue-700 font-semibold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer"
+              className="px-3 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer border border-white/20"
               id="btn-case-guide"
             >
-              <BookOpen className="w-4 h-4" />
-              Guía del Caso Brayan Salgado
+              <BookOpen className="w-3.5 h-3.5" />
+              Guía del Caso
+            </button>
+
+            <button
+              onClick={() => { const next = !isDark; setIsDark(next); localStorage.setItem("theme", next ? "dark" : "light"); }}
+              className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all cursor-pointer"
+              title={isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+              id="btn-toggle-theme"
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className={`p-2.5 rounded-xl border transition-all ${
-                showSettings 
-                  ? "bg-slate-100 text-slate-800 border-slate-300" 
-                  : "bg-white text-slate-500 border-slate-200 hover:text-slate-800"
+              className={`p-2 rounded-xl border border-white/20 transition-all cursor-pointer ${
+                showSettings ? "bg-white/30 text-white" : "bg-white/15 hover:bg-white/25 text-white"
               }`}
               title="Configuración de la API destino"
               id="btn-toggle-settings"
@@ -369,21 +373,52 @@ export default function App() {
           {/* DRAG & DROP E IMÁGENES DE MUESTRA PARA OCR */}
           <DocumentDropzone
             onAnalyze={handleAnalyzeDocument}
-            onSelectSample={handleSelectSample}
             isAnalyzing={isAnalyzing}
             onShowHelp={() => setShowHelpModal(true)}
+            onFilterType={setFilterType}
+            activeFilter={filterType}
+            documentCounts={documents
+              .filter((d) => activeTramiteId ? d.tramiteId === activeTramiteId : false)
+              .reduce((acc, d) => {
+                acc[d.documentType] = (acc[d.documentType] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>)}
           />
 
           {/* HISTORIAL LOCAL EN LA DB DE ESTE SISTEMA */}
-          <DocumentList
-            documents={documents}
-            activeId={activeDocId}
-            onSelect={(id) => {
-              setActiveDocId(id);
-              setShowLogModal(false);
-            }}
-            onDelete={handleDeleteDocument}
-          />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-3">
+              <button
+                onClick={() => { const next = !showHistory; setShowHistory(next); localStorage.setItem("showHistory", next ? "true" : "false"); }}
+                className="flex items-center gap-2 text-sm font-bold uppercase tracking-tight text-slate-700 dark:text-slate-200 hover:text-blue-600 transition-colors"
+              >
+                Historial de Documentos
+                <span className="text-xs font-medium text-slate-400 normal-case">({documents.length})</span>
+                {showHistory ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+              <button
+                onClick={handleNuevoTramite}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Limpiar selección y preparar para nuevo cliente"
+              >
+                + Nuevo Trámite
+              </button>
+            </div>
+            {showHistory && (
+              <div className="border-t border-slate-100 dark:border-slate-700">
+                <DocumentList
+                  documents={documents}
+                  activeId={activeDocId}
+                  onSelect={(id) => {
+                    setActiveDocId(id);
+                    setShowLogModal(false);
+                  }}
+                  onDelete={handleDeleteDocument}
+                  onDeleteTramite={handleDeleteTramite}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* COLUMNA CENTRAL-DERECHA (7 de 12 columnas): VISOR DE EXTRACCIÓN Y API DESTINO */}
@@ -395,6 +430,7 @@ export default function App() {
               document={activeDoc}
               onUpdateDocumentData={handleUpdateDocumentData}
               onSyncDocument={handleSyncDocument}
+              onDeleteDocument={(id) => handleDeleteDocument(id, { stopPropagation: () => {} } as React.MouseEvent)}
               isSyncing={isSyncing}
               apiUrl={targetApiUrl}
             />
@@ -421,7 +457,7 @@ export default function App() {
         />
       )}
 
-      {/* GUÍA DE ARCHIVOS DEL TRÁMITE / AYUDA (MODAL) */}
+      {/* GUÍA DE USO (MODAL) */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="help-modal-overlay">
           <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl flex flex-col max-h-[85vh] text-slate-800 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
@@ -429,7 +465,7 @@ export default function App() {
               <div className="flex items-center gap-2.5">
                 <BookOpen className="w-5 h-5 text-blue-600" />
                 <h3 className="font-extrabold text-sm text-slate-900">
-                  Guía de Gestión del Trámite Colombiano: Brayan Camilo Salgado
+                  Guía de Uso — Scanner de Documentos de Tránsito
                 </h3>
               </div>
               <button
@@ -437,7 +473,7 @@ export default function App() {
                 className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-lg transition-colors text-xs font-semibold cursor-pointer"
                 id="btn-close-help"
               >
-                Cerrar Guía
+                Cerrar
               </button>
             </div>
 
@@ -445,64 +481,62 @@ export default function App() {
               <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-blue-900 mb-0.5">El caso de Negocio Sincronizado</p>
+                  <p className="font-semibold text-blue-900 mb-0.5">¿Qué hace esta aplicación?</p>
                   <p className="text-[11px] text-blue-950">
-                    Los archivos adjuntos corresponden a un trámite real de <strong>traspaso de motocicleta</strong> en Colombia en Junio de 2026. El comprador del vehículo es BRAYAN CAMILO SALGADO JIMENEZ, quien compra una motocicleta <strong>VOGE 300Rally de color Gris Modelo 2027</strong>.
+                    Escanea un PDF con los documentos de un trámite de tránsito colombiano, extrae automáticamente los datos de cada documento usando <strong>Gemini AI</strong>, permite revisarlos y corregirlos, y los sincroniza con el sistema de registro externo.
                   </p>
                 </div>
               </div>
 
               <div>
                 <h4 className="font-bold text-slate-800 uppercase tracking-tight text-[11px] mb-2 flex items-center gap-1.5 border-b border-slate-50 pb-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Los Documentos y datos extraídos:
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Documentos soportados
                 </h4>
-                <ul className="space-y-3 pl-1 text-[11px]">
+                <ul className="space-y-2.5 pl-1 text-[11px]">
                   <li>
-                    <strong className="text-slate-800">1. Cédula de Ciudadanía Colombiana (Pág. 5)</strong>:
-                    Identificación de Brayan (C.C. 1.233.498.817). Note que el modelo IA puede leer y decodificar datos manuscritos escritos abajo en bolígrafo sobre el papel fotocopiado: Celular (3102389606), Dirección (Cl 24E # 1-147, Madrid Cundinamarca), Correo (SalgadoBS98@gmail.com).
+                    <strong className="text-slate-800">Cédula de Ciudadanía</strong>: nombre completo, número de documento, fecha de nacimiento, sexo, RH, estatura y datos de contacto (celular, correo, dirección), incluyendo datos manuscritos.
                   </li>
                   <li>
-                    <strong className="text-slate-800">2. Factura de Venta Éxito (Pág 1 y 4)</strong>:
-                    Comprobante fiscal con número RZ2173627 del Almacén Éxito Mosquera del 06-Jun-2026. Detalla la moto 300Rally, valor de $17.590.000, número de chasis (9F2A73001VB000332), número de motor (LC178MN445103Q5), color Gris, modelo 2027.
+                    <strong className="text-slate-800">Factura de Compraventa de Vehículo</strong>: número de factura, fecha, datos del comprador, marca, línea, modelo, motor, chasis, cilindrada, color y valor total.
                   </li>
                   <li>
-                    <strong className="text-slate-800">3. Formulario Nacional RUNT (Pág. 2)</strong>:
-                    Formulario oficial de Solicitud de Trámites del Registro Nacional Automotor con casilla de "Traspaso" marcada para moto VOGE 300Rally.
+                    <strong className="text-slate-800">Formulario RUNT</strong>: trámite solicitado, datos del propietario, y datos técnicos del vehículo (marca, línea, motor, chasis, modelo, cilindrada, color).
                   </li>
                   <li>
-                    <strong className="text-slate-800">4. Certificado de Gases y Empadronamiento (Pág 3)</strong>:
-                    Expedido por AKT Motos. Valida la cilindrada oficial de la motocicleta (292 cc) y los códigos VIN del motor.
+                    <strong className="text-slate-800">Certificado de Gases / Empadronamiento</strong>: tipo de certificado, fecha, datos del vehículo (marca, línea, chasis, motor, cilindrada, modelo).
                   </li>
                   <li>
-                    <strong className="text-slate-800">5. Poder de Trámite Especial (Pág. 6)</strong>:
-                    Documento de mandato legal por Brayan Camilo Salgado facultando a TRANSITEMOS para radicar y solicitar el traspaso de placas y alertas.
+                    <strong className="text-slate-800">Poder Especial de Tránsito</strong>: nombre e identificación del otorgante, nombre del apoderado y lista de trámites autorizados.
                   </li>
                 </ul>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-1">
                 <h4 className="font-bold text-slate-800 uppercase tracking-tight text-[11px] mb-2 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" /> ¿Cómo probar el flujo completo de la API?
+                  <Clock className="w-3.5 h-3.5 text-slate-500" /> Flujo de trabajo paso a paso
                 </h4>
                 <ol className="list-decimal list-inside space-y-2.5 pl-1.5 text-[11px]">
                   <li>
-                    Haga click en cualquiera de las <strong>muestras rápidas de tránsito</strong> a la izquierda.
+                    Arrastre o seleccione el PDF del trámite en la zona de carga. El sistema acepta un PDF con todos los documentos del cliente en un solo archivo.
                   </li>
                   <li>
-                    La aplicación digitalizará la información automáticamente, estructurándola bajo las reglas de tránsito de Colombia.
+                    Gemini AI analiza el archivo en paralelo y detecta automáticamente los documentos presentes (hasta 5 tipos). Los resultados aparecen agrupados en el historial bajo el nombre del cliente.
                   </li>
                   <li>
-                    Valide y modifique cualquier dato si lo desea en los campos editables del formulario central. Presione "Guardar Cambios Locales" para registrar sus ediciones.
+                    Revise cada documento en el panel central. Si algún dato fue extraído incorrectamente, corríjalo y presione <strong>"Guardar"</strong> para persistir los cambios en Firestore.
                   </li>
                   <li>
-                    Haga clic en <strong>"Sincronizar vía API"</strong>. El servidor gestionará un POST real enviando el JSON estructurado. Sabrá que triunfó puesto que el registro aparecerá de inmediato en la tabla de base de datos del "Sistema Destino" de la derecha. El Inspector se abrirá mostrando el request/response HTTP.
+                    Haga clic en <strong>"Sincronizar"</strong> para enviar el documento al sistema externo de registro. El estado cambiará a <em>Sincronizado</em> y podrá ver el log completo del request/response HTTP.
+                  </li>
+                  <li>
+                    Use <strong>"+ Nuevo Trámite"</strong> en el historial para limpiar la sesión activa y procesar el siguiente cliente sin borrar los registros guardados.
                   </li>
                 </ol>
               </div>
             </div>
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between text-[10px] text-slate-500">
-              <span>Soporte Técnico de Integración • API Rest v1.0</span>
+              <span>DivergencyAI • API Rest v1.0</span>
               <a href="https://runt.com.co" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-0.5 font-medium">
                 Sistemas RUNT Colombia <ExternalLink className="w-3 h-3" />
               </a>
@@ -512,13 +546,14 @@ export default function App() {
       )}
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-150 py-5 mt-auto text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>Procesamiento Electrónico Inteligente de Trámites © 2026. Todos los derechos reservados.</span>
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-[10px]">API Endpoint: Active</span>
-            <span className="font-mono text-[10px]">Engine: Gemini 3.5 Flash</span>
-          </div>
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 py-6 mt-auto">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-1.5 text-center">
+          <span className="text-sm font-black tracking-tight text-slate-500 dark:text-slate-200 uppercase">
+            DivergencyAI
+          </span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            Todos los derechos reservados © 2026
+          </span>
         </div>
       </footer>
 

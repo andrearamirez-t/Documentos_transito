@@ -5,6 +5,7 @@
 
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -29,6 +30,7 @@ function getGeminiClient(): GoogleGenAI {
     geminiClient = new GoogleGenAI({
       apiKey: apiKey,
       httpOptions: {
+        apiVersion: "v1alpha",
         headers: {
           "User-Agent": "aistudio-build",
         },
@@ -65,148 +67,31 @@ interface ExternalRecord {
   details: any;
 }
 
-let documentsDB: DocumentRecord[] = [];
-let externalSystemDB: ExternalRecord[] = [];
+const DATA_DIR = path.join(process.cwd(), "data");
+const DOCS_FILE = path.join(DATA_DIR, "documents-db.json");
+const EXT_FILE  = path.join(DATA_DIR, "external-db.json");
 
-// Precargar datos de prueba de Brayan Camilo Salgado que corresponden a los documentos adjuntos
-const MOCK_SAMPLES: Record<string, { documentType: string; extractedData: any; summary: string; confidence: number }> = {
-  "sample_factura": {
-    documentType: "factura",
-    confidence: 0.98,
-    summary: "Factura de compra de motocicleta VOGE 300Rally de ÉXITO MOSQUERA para Brayan Camilo Salgado Jimenez",
-    extractedData: {
-      numeroFactura: "RZ2173627",
-      fecha: "2026-06-06T15:59:24",
-      compradorNombre: "BRAYAN CAMILO SALGADO JIMENEZ",
-      compradorIdentificacion: "1233498817",
-      vehiculoMarca: "ART - VOGE",
-      vehiculoLinea: "300RALLY",
-      vehiculoModelo: "2027",
-      vehiculoMotor: "LC178MN445103Q5",
-      vehiculoChasis: "9F2A73001VB000332",
-      vehiculoCilindrada: "292 cc",
-      vehiculoColor: "GRIS",
-      valorTotal: 17590000
-    }
-  },
-  "sample_runt": {
-    documentType: "runt",
-    confidence: 0.96,
-    summary: "Formulario de solicitud de trámites RUNT para traspaso de motocicleta por Brayan Camilo Salgado",
-    extractedData: {
-      tramiteSolicitado: "Traspaso de Propiedad",
-      propietarioNombre: "Brayan Camilo Salgado Jimenez",
-      propietarioIdentificacion: "1233498817",
-      vehiculoMarca: "ART-VOGE",
-      vehiculoLinea: "300Rally",
-      vehiculoMotor: "LC178MN445103Q5",
-      vehiculoChasis: "9F2A73001VB000332",
-      vehiculoModelo: "2027",
-      vehiculoCilindrada: "292 cc",
-      vehiculoColor: "Gris"
-    }
-  },
-  "sample_gases": {
-    documentType: "gases",
-    confidence: 0.97,
-    summary: "Certificado de Empadronamiento y de Emisiones de Gases AKT Motos para la motocicleta Rally 300",
-    extractedData: {
-      tipoCertificado: "Certificado de Empadronamiento y Emisiones",
-      fechaCertificado: "2026-04-11",
-      vehiculoMarca: "AKT-VOGE",
-      vehiculoLinea: "300RALLY",
-      vehiculoChasis: "9F2A73001VB000332",
-      vehiculoMotor: "LC178MN445103Q5",
-      vehiculoCilindrada: "292 cc",
-      vehiculoModelo: "2027"
-    }
-  },
-  "sample_cedula": {
-    documentType: "cedula",
-    confidence: 0.99,
-    summary: "Cédula de Ciudadanía Colombiana de Brayan Camilo Salgado Jimenez con anotaciones manuscritas de contacto",
-    extractedData: {
-      nombreCompleto: "BRAYAN CAMILO SALGADO JIMENEZ",
-      numeroDocumento: "1.233.498.817",
-      fechaNacimiento: "1998-07-18",
-      sexo: "M",
-      rh: "O+",
-      estatura: "1.77 m",
-      contacto: {
-        celular: "3102389606",
-        correo: "SalgadoBS98@gmail.com",
-        direccion: "Cl 24E # 1-147, Madrid Cundinamarca"
-      }
-    }
-  },
-  "sample_poder": {
-    documentType: "poder",
-    confidence: 0.95,
-    summary: "Poder para trámites de tránsito firmado por Brayan Camilo Salgado Jimenez otorgado a TRANSITEMOS",
-    extractedData: {
-      otorganteNombre: "Brayan Camilo Salgado Jimenez",
-      otorganteIdentificacion: "1233498817",
-      apoderadoNombre: "TRANSITEMOS / APODERADO INDETERMINADO",
-      tramitesAutorizados: [
-        "Matrícula Inicial",
-        "Inscripción de Alerta",
-        "Traspaso"
-      ]
-    }
-  }
-};
-
-// Cargar algunos registros iniciales para visualización rápida de excelente valor
-if (documentsDB.length === 0) {
-  const now = new Date();
-  documentsDB.push({
-    id: "doc_1",
-    fileName: "cedula_brayan_camilo.png",
-    documentType: "cedula",
-    extractedData: MOCK_SAMPLES["sample_cedula"].extractedData,
-    confidence: 0.99,
-    summary: MOCK_SAMPLES["sample_cedula"].summary,
-    scannedAt: new Date(now.getTime() - 1000 * 60 * 30).toISOString(), // hace 30 minutos
-    syncStatus: "success",
-    syncUrlUsed: "http://localhost:3000/api/external-system-mock",
-    logs: [
-      {
-        timestamp: new Date(now.getTime() - 1000 * 60 * 29).toISOString(),
-        url: "http://localhost:3000/api/external-system-mock",
-        method: "POST",
-        requestPayload: MOCK_SAMPLES["sample_cedula"].extractedData,
-        responseStatus: 201,
-        responseBody: { status: "success", recordId: "ext_init_1", message: "Registro guardado en base de datos externa de tránsito." },
-        success: true
-      }
-    ]
-  });
-
-  // Agregar a la DB externa simulada de tránsito el registro precargado sincronizado
-  externalSystemDB.push({
-    id: "ext_init_1",
-    receivedAt: new Date(now.getTime() - 1000 * 60 * 29).toISOString(),
-    originDocumentId: "doc_1",
-    documentType: "cedula",
-    clientName: "BRAYAN CAMILO SALGADO JIMENEZ",
-    clientDocId: "1.233.498.817",
-    vehicleChasis: "N/A",
-    vehicleMotor: "N/A",
-    details: MOCK_SAMPLES["sample_cedula"].extractedData
-  });
-
-  documentsDB.push({
-    id: "doc_2",
-    fileName: "factura_voge_300rally.pdf",
-    documentType: "factura",
-    extractedData: MOCK_SAMPLES["sample_factura"].extractedData,
-    confidence: 0.98,
-    summary: MOCK_SAMPLES["sample_factura"].summary,
-    scannedAt: new Date(now.getTime() - 1000 * 60 * 15).toISOString(), // hace 15 minutos
-    syncStatus: "pending",
-    logs: []
-  });
+function loadFile<T>(filePath: string, fallback: T): T {
+  try {
+    if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch (_) {}
+  return fallback;
 }
+function saveFile(filePath: string, data: unknown) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (_) {}
+}
+
+let documentsDB: DocumentRecord[] = loadFile(DOCS_FILE, []);
+let externalSystemDB: ExternalRecord[] = loadFile(EXT_FILE, []);
+
+
+// Si no existe el archivo en disco aún, guardar el estado inicial vacío
+if (!fs.existsSync(DOCS_FILE)) saveFile(DOCS_FILE, documentsDB);
+if (!fs.existsSync(EXT_FILE))  saveFile(EXT_FILE,  externalSystemDB);
+
 
 
 /* ==================== API ENDPOINTS ==================== */
@@ -224,6 +109,7 @@ app.get("/api/external-system-db", (_req, res) => {
 // 3. Endpoint para Limpiar DB externa simulada
 app.delete("/api/external-system-db/clear", (_req, res) => {
   externalSystemDB = [];
+  saveFile(EXT_FILE, externalSystemDB);
   res.json({ message: "Base de datos externa simulada vaciada con éxito." });
 });
 
@@ -231,150 +117,107 @@ app.delete("/api/external-system-db/clear", (_req, res) => {
 app.delete("/api/documents/:id", (req, res) => {
   const { id } = req.params;
   documentsDB = documentsDB.filter(d => d.id !== id);
+  saveFile(DOCS_FILE, documentsDB);
   res.json({ success: true, message: "Documento eliminado." });
 });
 
-// 5. Analizar documento subido (usando Gemini o fallback de prueba)
+// 4b. Actualizar datos extraídos de un documento (Guardar cambios)
+app.patch("/api/documents/:id", (req, res) => {
+  const { id } = req.params;
+  const { extractedData } = req.body;
+  const doc = documentsDB.find(d => d.id === id);
+  if (!doc) return res.status(404).json({ error: "Documento no encontrado." });
+  doc.extractedData = extractedData;
+  saveFile(DOCS_FILE, documentsDB);
+  res.json({ success: true });
+});
+
+// Tipos de documentos a detectar — una llamada paralela por tipo
+const DOC_TYPES = [
+  { type: "cedula",  name: "Cédula de Ciudadanía colombiana",                   fields: "nombreCompleto, numeroDocumento, fechaNacimiento, sexo, rh, estatura, contacto:{celular,correo,direccion}" },
+  { type: "factura", name: "Factura de compraventa de vehículo",                fields: "numeroFactura, fecha, compradorNombre, compradorIdentificacion, vehiculoMarca, vehiculoLinea, vehiculoModelo, vehiculoMotor, vehiculoChasis, vehiculoCilindrada, vehiculoColor, valorTotal(entero)" },
+  { type: "runt",    name: "Formulario de solicitud de trámites RUNT",          fields: "tramiteSolicitado, propietarioNombre, propietarioIdentificacion, vehiculoMarca, vehiculoLinea, vehiculoMotor, vehiculoChasis, vehiculoModelo, vehiculoCilindrada, vehiculoColor" },
+  { type: "gases",   name: "Certificado de emisiones de gases o empadronamiento", fields: "tipoCertificado, fechaCertificado, vehiculoMarca, vehiculoLinea, vehiculoChasis, vehiculoMotor, vehiculoCilindrada, vehiculoModelo" },
+  { type: "poder",   name: "Poder especial para trámites de tránsito",          fields: "otorganteNombre, otorganteIdentificacion, apoderadoNombre, tramitesAutorizados(array de strings)" },
+];
+
+// 5. Analizar documento subido (usando Gemini — 5 llamadas paralelas, una por tipo)
 app.post("/api/documents/analyze", async (req, res) => {
-  const { fileName, mimeType, base64, sampleKey } = req.body;
+  const { fileName, mimeType, base64 } = req.body;
 
-  // Si envuelve un sample y el usuario pidió fallback rápido o no hay API key de Gemini
-  if (sampleKey && MOCK_SAMPLES[sampleKey]) {
-    const sample = MOCK_SAMPLES[sampleKey];
-    const newRecord: DocumentRecord = {
-      id: "doc_" + Date.now(),
-      fileName: fileName || `${sampleKey}.png`,
-      documentType: sample.documentType,
-      extractedData: sample.extractedData,
-      confidence: sample.confidence,
-      summary: sample.summary,
-      scannedAt: new Date().toISOString(),
-      syncStatus: "pending",
-      logs: []
-    };
-    documentsDB.unshift(newRecord);
-    return res.status(201).json(newRecord);
-  }
-
-  // Si no se proporcionó base64, dar error
   if (!base64) {
     return res.status(400).json({ error: "No se proporcionó data de imagen o archivo en base64" });
   }
 
   try {
     const ai = getGeminiClient();
+    const imagePart = { inlineData: { data: base64, mimeType: mimeType || "image/png" } };
+    const scannedAt = new Date().toISOString();
+    const baseTime = Date.now();
 
-    const imagePart = {
-      inlineData: {
-        data: base64,
-        mimeType: mimeType || "image/png"
-      }
-    };
+    console.log(">>> LLAMANDO A GEMINI x5 (paralelo) con archivo:", fileName, mimeType);
 
-    const promptText = `
-    Analiza de forma extremadamente minuciosa este documento de tránsito (factura, documento de identificación / cédula de ciudadanía, certificado de emisiones de gases / certificado de empadronamiento de marcas como AKT/VOGE, formulario de solicitud de trámites RUNT o poder de trámites especiales de tránsito).
-    
-    1. Determina la categoría del documento ('cedula', 'factura', 'runt', 'gases', 'poder', 'desconocido').
-    2. Extrae de manera estructurada todos los datos del texto. Presta alta atención a datos escritos a mano con bolígrafo (como números de teléfono, correos electrónicos, etc.) que se encuentran a menudo en las esquinas o márgenes de las hojas de las cédulas o poderes.
-    3. Asegúrate de retornar estrictamente un objeto JSON que siga el siguiente esquema, sin incluir envoltorios Markdown, texto libre antes o después, código adicional o comillas triples de formato si no es puramente un JSON:
-    
-    {
-      "documentType": "cedula" | "factura" | "runt" | "gases" | "poder" | "desconocido",
-      "extractedData": {
-         // Si es "cedula":
-         "nombreCompleto": (string, nombre en mayúscula o minúscula completo),
-         "numeroDocumento": (string, ej: "1.233.498.817"),
-         "fechaNacimiento": (string, ej: "1998-07-18"),
-         "sexo": (string, "M" o "F"),
-         "rh": (string, ej: "O+"),
-         "estatura": (string, ej: "1.77 m"),
-         "contacto": {
-            "celular": (string escrito a mano o impreso, ej: "3102389606"),
-            "correo": (string de correo, descifra si está manuscrito, ej: "SalgadoBS98@gmail.com"),
-            "direccion": (string de dirección, ej: "Cl 24E # 1-147, Madrid Cundinamarca")
-         }
-         
-         // Si es "factura":
-         "numeroFactura": (string de referencia de factura, ej: "RZ2173627"),
-         "fecha": (string, ej: "2026-06-06T15:59:24"),
-         "compradorNombre": (string, ej: "BRAYAN CAMILO SALGADO JIMENEZ"),
-         "compradorIdentificacion": (string, ej: "1233498817"),
-         "vehiculoMarca": (string, ej: "ART - VOGE"),
-         "vehiculoLinea": (string, ej: "300RALLY"),
-         "vehiculoModelo": (string, ej: "2027"),
-         "vehiculoMotor": (string, ej: "LC178MN445103Q5"),
-         "vehiculoChasis": (string, ej: "9F2A73001VB000332"),
-         "vehiculoCilindrada": (string, ej: "292 cc"),
-         "vehiculoColor": (string, ej: "GRIS"),
-         "valorTotal": (valor de venta final en pesos sin comas, número entero, ej: 17590000)
+    const tramiteId = "tramite_" + baseTime;
 
-         // Si es "runt":
-         "tramiteSolicitado": (string, ej: "Traspaso de Propiedad"),
-         "propietarioNombre": (string, ej: "Brayan Camilo Salgado Jimenez"),
-         "propietarioIdentificacion": (string, ej: "1233498817"),
-         "vehiculoMarca": (string, ej: "ART-VOGE"),
-         "vehiculoLinea": (string, ej: "300Rally"),
-         "vehiculoMotor": (string, ej: "LC178MN445103Q5"),
-         "vehiculoChasis": (string, ej: "9F2A73001VB000332"),
-         "vehiculoModelo": (string, ej: "2027"),
-         "vehiculoCilindrada": (string, ej: "292 cc"),
-         "vehiculoColor": (string, ej: "Gris")
+    const calls = DOC_TYPES.map(({ type, name, fields }, i) => {
+      const prompt = `This file is a Colombian transit document package. It may contain multiple different documents.
 
-         // Si es "gases":
-         "tipoCertificado": (string, ej: "Certificado de Empadronamiento/Gases"),
-         "fechaCertificado": (string de fecha del certificado),
-         "vehiculoMarca": (string),
-         "vehiculoLinea": (string),
-         "vehiculoChasis": (string),
-         "vehiculoMotor": (string),
-         "vehiculoCilindrada": (string),
-         "vehiculoModelo": (string)
+Look ONLY for a "${name}" (documentType: "${type}") in this file.
 
-         // Si es "poder":
-         "otorganteNombre": (string, nombre del firmante que autoriza),
-         "otorganteIdentificacion": (string, identificación),
-         "apoderadoNombre": (string, la persona o entidad a quien se le cede poder, ej: "TRANSITEMOS"),
-         "tramitesAutorizados": (arreglo de strings con los trámites específicos del formulario autorizados, ej: ["Traspaso", "Inscripción en Runt", "Matricula Inicial"])
-      },
-      "confidence": (un número decimal entre 0 y 1 indicando la claridad y precisión de la lectura),
-      "summary": (un resumen corto y pulido en una sola oración del contenido e implicaciones legales o comerciales del documento)
-    }
-    
-    Asegúrate de que el documento responda con estrictamente un objeto JSON.
-    `;
+If this document type IS present: extract its data and respond with this exact JSON:
+{"found": true, "documentType": "${type}", "extractedData": {${fields}}, "confidence": 0.0-1.0, "summary": "una oración en español describiendo este documento"}
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [imagePart, { text: promptText }],
-      config: {
-        responseMimeType: "application/json"
-      }
+If this document type is NOT present in the file: respond with exactly:
+{"found": false}
+
+Rules:
+- Respond ONLY with the JSON object, no markdown, no extra text.
+- Pay attention to handwritten data in margins or corners.`;
+
+      return ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [imagePart, { text: prompt }] }]
+      }).then(response => {
+        const raw = (response.text || '{"found":false}').replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed.found) return null;
+          return {
+            id: "doc_" + (baseTime + i),
+            tramiteId,
+            fileName: fileName || "documento_escaneado.png",
+            documentType: type,
+            extractedData: parsed.extractedData || {},
+            confidence: parsed.confidence || 0.8,
+            summary: parsed.summary || `Documento ${name} procesado.`,
+            scannedAt,
+            syncStatus: "pending" as const,
+            logs: []
+          };
+        } catch { return null; }
+      }).catch(() => null);
     });
 
-    const resultText = response.text || "{}";
-    const parsedResult = JSON.parse(resultText.trim());
+    const results = await Promise.all(calls);
+    const newRecords = results.filter((r): r is NonNullable<typeof r> => r !== null);
 
-    const newRecord: DocumentRecord = {
-      id: "doc_" + Date.now(),
-      fileName: fileName || "documento_escaneado.png",
-      documentType: parsedResult.documentType || "desconocido",
-      extractedData: parsedResult.extractedData || {},
-      confidence: parsedResult.confidence || 0.85,
-      summary: parsedResult.summary || "Documento procesado correctamente.",
-      scannedAt: new Date().toISOString(),
-      syncStatus: "pending",
-      logs: []
-    };
+    if (newRecords.length === 0) {
+      return res.status(422).json({ error: "No se encontraron documentos de tránsito reconocibles en el archivo." });
+    }
 
-    documentsDB.unshift(newRecord);
-    return res.status(201).json(newRecord);
+    console.log(`[Gemini] Documentos encontrados: ${newRecords.length}/${DOC_TYPES.length}`);
+    newRecords.forEach(r => documentsDB.unshift(r));
+    saveFile(DOCS_FILE, documentsDB);
+    return res.status(201).json(newRecords);
 
   } catch (error: any) {
     console.error("Error procesando imagen con Gemini:", error);
+    const isKeyError = error.message?.includes("API_KEY") || error.message?.includes("PERMISSION") || error.message?.includes("key");
     return res.status(500).json({
-      error: "Error en el reconocimiento automático del documento",
-      details: error.message || "Error desconocido",
-      hint: "Verifique que la API Key de Gemini esté configurada en Settings > Secrets en AI Studio."
+      error: isKeyError
+        ? "API Key de Gemini inválida o sin permisos. Verifique la clave en el archivo .env"
+        : "Error en el reconocimiento automático del documento",
+      details: error.message || "Error desconocido"
     });
   }
 });
@@ -441,6 +284,7 @@ app.post("/api/documents/sync/:id", async (req, res) => {
     doc.syncStatus = syncLog.success ? "success" : "failed";
     doc.syncUrlUsed = destinationUrl;
     doc.logs.unshift(syncLog);
+    saveFile(DOCS_FILE, documentsDB);
 
     return res.json({
       success: syncLog.success,
@@ -458,6 +302,7 @@ app.post("/api/documents/sync/:id", async (req, res) => {
     doc.syncStatus = "failed";
     doc.syncUrlUsed = destinationUrl;
     doc.logs.unshift(syncLog);
+    saveFile(DOCS_FILE, documentsDB);
 
     return res.status(500).json({
       success: false,
@@ -510,7 +355,6 @@ const REQUIRED_FIELDS: Record<string, { field: string; label: string }[]> = {
   poder: [
     { field: "otorganteNombre",          label: "Nombre del otorgante" },
     { field: "otorganteIdentificacion",  label: "Identificación del otorgante" },
-    { field: "apoderadoNombre",          label: "Nombre del apoderado" },
     { field: "tramitesAutorizados",      label: "Trámites autorizados" },
   ],
 };
@@ -612,6 +456,10 @@ app.post("/api/external-system-mock", (req, res) => {
   } else if (documentType === "gases") {
     vehicleChasis = extractedData.vehiculoChasis || vehicleChasis;
     vehicleMotor = extractedData.vehiculoMotor || vehicleMotor;
+    // Certificados de gases no tienen nombre de persona — usar marca+línea como identificador
+    const marca = extractedData.vehiculoMarca || "";
+    const linea = extractedData.vehiculoLinea || "";
+    if (marca || linea) clientName = `Vehículo ${marca} ${linea}`.trim();
   } else if (documentType === "poder") {
     clientName = extractedData.otorganteNombre || clientName;
     clientDocId = extractedData.otorganteIdentificacion || clientDocId;
@@ -630,6 +478,7 @@ app.post("/api/external-system-mock", (req, res) => {
   };
 
   externalSystemDB.unshift(mockRecord);
+  saveFile(EXT_FILE, externalSystemDB);
 
   return res.status(201).json({
     status: "success",
@@ -642,6 +491,12 @@ app.post("/api/external-system-mock", (req, res) => {
 });
 
 
+
+// API Docs — sirve la página de documentación
+app.use("/public", express.static(path.join(process.cwd(), "public")));
+app.get("/api-docs", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "api-docs.html"));
+});
 
 /* ==================== VITE MIDDLEWARE CONFIGURATION ==================== */
 
@@ -668,3 +523,4 @@ async function startServer() {
 }
 
 startServer();
+console.log("=== SERVIDOR v3 INICIADO - GEMINI 2.5 FLASH SIN JSON FORZADO ===");

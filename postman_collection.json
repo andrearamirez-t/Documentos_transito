@@ -15,27 +15,43 @@
   "item": [
     {
       "name": "Documentos",
-      "description": "Gestión del historial local de documentos analizados.",
+      "description": "Gestión del historial de documentos analizados.",
       "item": [
         {
           "name": "Listar todos los documentos",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/documents",
-            "description": "Retorna todos los documentos procesados almacenados en la base de datos local."
+            "description": "Retorna todos los documentos procesados almacenados en Firestore (producción) o archivo JSON local (desarrollo)."
+          }
+        },
+        {
+          "name": "Actualizar datos extraídos (Guardar correcciones)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/doc_1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "doc_1"]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"extractedData\": {\n    \"nombreCompleto\": \"CARLOS MARIO GÓMEZ HERRERA\",\n    \"numeroDocumento\": \"79854123\",\n    \"fechaNacimiento\": \"1985-03-22\",\n    \"sexo\": \"M\",\n    \"rh\": \"A+\",\n    \"estatura\": \"1.74 m\"\n  }\n}"
+            },
+            "description": "Reemplaza el campo extractedData del documento indicado. Solo actualiza ese campo — syncStatus, logs y tramiteId no se modifican.\n\nRespuesta 200: { \"success\": true }\nRespuesta 404: documento no encontrado (entorno local)\nRespuesta 500: error en Firestore"
           }
         },
         {
           "name": "Eliminar un documento",
           "request": {
             "method": "DELETE",
-            "url": "{{baseUrl}}/api/documents/:id",
-            "description": "Elimina un documento del historial local por su ID.",
             "url": {
               "raw": "{{baseUrl}}/api/documents/doc_1",
               "host": ["{{baseUrl}}"],
               "path": ["api", "documents", "doc_1"]
-            }
+            },
+            "description": "Elimina un documento del historial por su ID. Operación irreversible."
           }
         }
       ]
@@ -45,29 +61,16 @@
       "description": "Extracción de datos de documentos de tránsito usando IA.",
       "item": [
         {
-          "name": "Analizar muestra precargada (sin API Key)",
+          "name": "Analizar imagen en Base64",
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/documents/analyze",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sampleKey\": \"sample_factura\",\n  \"fileName\": \"Factura Éxito Mosquera.pdf\"\n}"
+              "raw": "{\n  \"base64\": \"<BASE64_DEL_ARCHIVO_SIN_PREFIJO_DATA_URL>\",\n  \"mimeType\": \"application/pdf\",\n  \"fileName\": \"tramite_cliente.pdf\"\n}"
             },
-            "description": "Analiza una muestra precargada sin necesitar API Key de Gemini.\n\nsampleKey puede ser:\n- sample_cedula\n- sample_factura\n- sample_runt\n- sample_gases\n- sample_poder"
-          }
-        },
-        {
-          "name": "Analizar imagen en Base64 (requiere API Key Gemini)",
-          "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/api/documents/analyze",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"base64\": \"<BASE64_DE_LA_IMAGEN_SIN_PREFIJO_DATA_URL>\",\n  \"mimeType\": \"image/jpeg\",\n  \"fileName\": \"cedula_brayan.jpg\"\n}"
-            },
-            "description": "Envía un documento como base64 para que Gemini extraiga los datos automáticamente.\n\nmimeType soportados: image/jpeg, image/png, image/webp, application/pdf\n\nRequiere GEMINI_API_KEY configurada en .env"
+            "description": "Envía un archivo como base64 para que Gemini extraiga los datos automáticamente en 5 llamadas paralelas (una por tipo de documento).\n\nmimeType soportados: image/jpeg, image/png, image/webp, application/pdf\n\nRequiere GEMINI_API_KEY configurada.\n\nRetorna un arreglo con los documentos detectados. Cada uno incluye: id, tramiteId, documentType, extractedData, confidence, summary, syncStatus."
           }
         }
       ]
@@ -84,20 +87,20 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"cedula\",\n  \"extractedData\": {\n    \"nombreCompleto\": \"BRAYAN CAMILO SALGADO JIMENEZ\",\n    \"numeroDocumento\": \"1.233.498.817\",\n    \"fechaNacimiento\": \"1998-07-18\",\n    \"sexo\": \"M\",\n    \"rh\": \"O+\",\n    \"estatura\": \"1.77 m\",\n    \"contacto\": {\n      \"celular\": \"3102389606\",\n      \"correo\": \"SalgadoBS98@gmail.com\",\n      \"direccion\": \"Cl 24E # 1-147, Madrid Cundinamarca\"\n    }\n  }\n}"
+              "raw": "{\n  \"documentType\": \"cedula\",\n  \"extractedData\": {\n    \"nombreCompleto\": \"CARLOS MARIO GÓMEZ HERRERA\",\n    \"numeroDocumento\": \"79854123\",\n    \"fechaNacimiento\": \"1985-03-22\",\n    \"sexo\": \"M\",\n    \"rh\": \"A+\",\n    \"estatura\": \"1.74 m\",\n    \"contacto\": {\n      \"celular\": \"3001234567\",\n      \"correo\": \"ejemplo@correo.com\",\n      \"direccion\": \"Calle 10 # 5-30, Bogotá D.C.\"\n    }\n  }\n}"
             },
             "description": "Campos obligatorios para CÉDULA:\n- nombreCompleto\n- numeroDocumento\n- fechaNacimiento\n- sexo\n\nRespuesta 200 = válido | Respuesta 422 = faltan campos"
           }
         },
         {
-          "name": "Validar Cédula con campos faltantes (ejemplo de error)",
+          "name": "Validar Cédula con campos faltantes (ejemplo 422)",
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/validate",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"cedula\",\n  \"extractedData\": {\n    \"nombreCompleto\": \"BRAYAN CAMILO SALGADO JIMENEZ\"\n  }\n}"
+              "raw": "{\n  \"documentType\": \"cedula\",\n  \"extractedData\": {\n    \"nombreCompleto\": \"CARLOS MARIO GÓMEZ HERRERA\"\n  }\n}"
             },
             "description": "Ejemplo que retorna 422 con los campos que faltan detallados."
           }
@@ -110,7 +113,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"factura\",\n  \"extractedData\": {\n    \"numeroFactura\": \"RZ2173627\",\n    \"fecha\": \"2026-06-06T15:59:24\",\n    \"compradorNombre\": \"BRAYAN CAMILO SALGADO JIMENEZ\",\n    \"compradorIdentificacion\": \"1233498817\",\n    \"vehiculoMarca\": \"ART - VOGE\",\n    \"vehiculoLinea\": \"300RALLY\",\n    \"vehiculoModelo\": \"2027\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoColor\": \"GRIS\",\n    \"valorTotal\": 17590000\n  }\n}"
+              "raw": "{\n  \"documentType\": \"factura\",\n  \"extractedData\": {\n    \"numeroFactura\": \"FCV-2026-00142\",\n    \"fecha\": \"2026-06-15\",\n    \"compradorNombre\": \"CARLOS MARIO GÓMEZ HERRERA\",\n    \"compradorIdentificacion\": \"79854123\",\n    \"vehiculoMarca\": \"CHEVROLET\",\n    \"vehiculoLinea\": \"SPARK GT\",\n    \"vehiculoModelo\": \"2024\",\n    \"vehiculoMotor\": \"MTR-4B12-0045678\",\n    \"vehiculoChasis\": \"9BWZZZ377VT004251\",\n    \"vehiculoCilindrada\": \"1200 cc\",\n    \"vehiculoColor\": \"BLANCO\",\n    \"valorTotal\": 58500000\n  }\n}"
             },
             "description": "Campos obligatorios para FACTURA:\n- numeroFactura\n- fecha\n- compradorNombre\n- compradorIdentificacion\n- vehiculoMarca\n- vehiculoLinea\n- vehiculoModelo\n- vehiculoMotor\n- vehiculoChasis\n- valorTotal"
           }
@@ -123,7 +126,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"runt\",\n  \"extractedData\": {\n    \"tramiteSolicitado\": \"Traspaso de Propiedad\",\n    \"propietarioNombre\": \"Brayan Camilo Salgado Jimenez\",\n    \"propietarioIdentificacion\": \"1233498817\",\n    \"vehiculoMarca\": \"ART-VOGE\",\n    \"vehiculoLinea\": \"300Rally\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoModelo\": \"2027\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoColor\": \"Gris\"\n  }\n}"
+              "raw": "{\n  \"documentType\": \"runt\",\n  \"extractedData\": {\n    \"tramiteSolicitado\": \"Traspaso de Propiedad\",\n    \"propietarioNombre\": \"CARLOS MARIO GÓMEZ HERRERA\",\n    \"propietarioIdentificacion\": \"79854123\",\n    \"vehiculoMarca\": \"CHEVROLET\",\n    \"vehiculoLinea\": \"SPARK GT\",\n    \"vehiculoMotor\": \"MTR-4B12-0045678\",\n    \"vehiculoChasis\": \"9BWZZZ377VT004251\",\n    \"vehiculoModelo\": \"2024\",\n    \"vehiculoCilindrada\": \"1200 cc\",\n    \"vehiculoColor\": \"BLANCO\"\n  }\n}"
             },
             "description": "Campos obligatorios para RUNT:\n- tramiteSolicitado\n- propietarioNombre\n- propietarioIdentificacion\n- vehiculoMarca\n- vehiculoLinea\n- vehiculoMotor\n- vehiculoChasis"
           }
@@ -136,7 +139,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"gases\",\n  \"extractedData\": {\n    \"tipoCertificado\": \"Certificado de Empadronamiento y Emisiones\",\n    \"fechaCertificado\": \"2026-04-11\",\n    \"vehiculoMarca\": \"AKT-VOGE\",\n    \"vehiculoLinea\": \"300RALLY\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoModelo\": \"2027\"\n  }\n}"
+              "raw": "{\n  \"documentType\": \"gases\",\n  \"extractedData\": {\n    \"tipoCertificado\": \"Certificado de Empadronamiento y Emisiones\",\n    \"fechaCertificado\": \"2026-04-10\",\n    \"vehiculoMarca\": \"CHEVROLET\",\n    \"vehiculoLinea\": \"SPARK GT\",\n    \"vehiculoChasis\": \"9BWZZZ377VT004251\",\n    \"vehiculoMotor\": \"MTR-4B12-0045678\",\n    \"vehiculoCilindrada\": \"1200 cc\",\n    \"vehiculoModelo\": \"2024\"\n  }\n}"
             },
             "description": "Campos obligatorios para GASES/EMPADRONAMIENTO:\n- tipoCertificado\n- fechaCertificado\n- vehiculoMarca\n- vehiculoChasis\n- vehiculoMotor\n- vehiculoCilindrada"
           }
@@ -149,7 +152,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"poder\",\n  \"extractedData\": {\n    \"otorganteNombre\": \"Brayan Camilo Salgado Jimenez\",\n    \"otorganteIdentificacion\": \"1233498817\",\n    \"apoderadoNombre\": \"TRANSITEMOS\",\n    \"tramitesAutorizados\": [\"Matrícula Inicial\", \"Inscripción de Alerta\", \"Traspaso\"]\n  }\n}"
+              "raw": "{\n  \"documentType\": \"poder\",\n  \"extractedData\": {\n    \"otorganteNombre\": \"CARLOS MARIO GÓMEZ HERRERA\",\n    \"otorganteIdentificacion\": \"79854123\",\n    \"apoderadoNombre\": \"EMPRESA DE TRÁNSITO S.A.S.\",\n    \"tramitesAutorizados\": [\"Matrícula Inicial\", \"Inscripción de Alerta\", \"Traspaso\"]\n  }\n}"
             },
             "description": "Campos obligatorios para PODER:\n- otorganteNombre\n- otorganteIdentificacion\n- apoderadoNombre\n- tramitesAutorizados (array no vacío)"
           }
@@ -174,7 +177,7 @@
               "mode": "raw",
               "raw": "{\n  \"targetUrl\": \"http://localhost:3000/api/external-system-mock\"\n}"
             },
-            "description": "Envía un documento por su ID al endpoint destino configurado.\n\ntargetUrl es opcional. Si se omite, usa el mock local.\n\nEl servidor hace un HTTP POST real al targetUrl con el payload estructurado."
+            "description": "Envía un documento por su ID al endpoint destino configurado.\n\ntargetUrl es opcional. Si se omite, usa el mock de producción.\n\nEl servidor hace un HTTP POST real al targetUrl con el payload estructurado.\n\nRespuesta exitosa actualiza syncStatus a 'success' en Firestore."
           }
         }
       ]
@@ -191,7 +194,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventType\": \"DOCUMENT_REGISTRATION\",\n  \"sourceApp\": \"Registro de Tránsito Sincronizador\",\n  \"payloadId\": \"pay_test_001\",\n  \"documentId\": \"doc_test_001\",\n  \"documentType\": \"factura\",\n  \"scannedAt\": \"2026-06-23T10:00:00.000Z\",\n  \"syncedAt\": \"2026-06-23T10:01:00.000Z\",\n  \"extractedData\": {\n    \"numeroFactura\": \"RZ2173627\",\n    \"fecha\": \"2026-06-06T15:59:24\",\n    \"compradorNombre\": \"BRAYAN CAMILO SALGADO JIMENEZ\",\n    \"compradorIdentificacion\": \"1233498817\",\n    \"vehiculoMarca\": \"ART - VOGE\",\n    \"vehiculoLinea\": \"300RALLY\",\n    \"vehiculoModelo\": \"2027\",\n    \"vehiculoMotor\": \"LC178MN445103Q5\",\n    \"vehiculoChasis\": \"9F2A73001VB000332\",\n    \"vehiculoCilindrada\": \"292 cc\",\n    \"vehiculoColor\": \"GRIS\",\n    \"valorTotal\": 17590000\n  },\n  \"confidence\": 0.98,\n  \"summary\": \"Factura de compra moto VOGE 300Rally\"\n}"
+              "raw": "{\n  \"eventType\": \"DOCUMENT_REGISTRATION\",\n  \"sourceApp\": \"Registro de Tránsito Sincronizador\",\n  \"payloadId\": \"pay_test_001\",\n  \"documentId\": \"doc_test_001\",\n  \"documentType\": \"factura\",\n  \"scannedAt\": \"2026-06-23T10:00:00.000Z\",\n  \"syncedAt\": \"2026-06-23T10:01:00.000Z\",\n  \"extractedData\": {\n    \"numeroFactura\": \"FCV-2026-00142\",\n    \"fecha\": \"2026-06-15\",\n    \"compradorNombre\": \"CARLOS MARIO GÓMEZ HERRERA\",\n    \"compradorIdentificacion\": \"79854123\",\n    \"vehiculoMarca\": \"CHEVROLET\",\n    \"vehiculoLinea\": \"SPARK GT\",\n    \"vehiculoModelo\": \"2024\",\n    \"vehiculoMotor\": \"MTR-4B12-0045678\",\n    \"vehiculoChasis\": \"9BWZZZ377VT004251\",\n    \"vehiculoCilindrada\": \"1200 cc\",\n    \"vehiculoColor\": \"BLANCO\",\n    \"valorTotal\": 58500000\n  },\n  \"confidence\": 0.96,\n  \"summary\": \"Factura de compraventa de vehículo Chevrolet Spark GT 2024.\"\n}"
             },
             "description": "Recibe un documento y lo registra en la base de datos del sistema destino.\n\nRespuestas:\n- 201: Registrado exitosamente\n- 400: Falta documentType o extractedData\n- 422: Faltan campos obligatorios (detalla cuáles)"
           }
@@ -204,7 +207,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"factura\",\n  \"extractedData\": {\n    \"numeroFactura\": \"RZ2173627\",\n    \"compradorNombre\": \"BRAYAN CAMILO SALGADO JIMENEZ\"\n  }\n}"
+              "raw": "{\n  \"documentType\": \"factura\",\n  \"extractedData\": {\n    \"numeroFactura\": \"FCV-2026-00142\",\n    \"compradorNombre\": \"CARLOS MARIO GÓMEZ HERRERA\"\n  }\n}"
             },
             "description": "Ejemplo que retorna 422 indicando exactamente qué campos obligatorios faltan."
           }

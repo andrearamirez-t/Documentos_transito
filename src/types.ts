@@ -82,6 +82,7 @@ export interface SyncLogEntry {
 
 export interface DocumentRecord {
   id: string;
+  tramiteId: string;
   fileName: string;
   documentType: DocumentType;
   extractedData: any;

@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Trámites de Tránsito — Documentación</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --sidebar-bg: #1a1f2e;
+      --sidebar-hover: #252d42;
+      --sidebar-active: #2d3a56;
+      --sidebar-border: #2e374f;
+      --sidebar-text: #a8b4cc;
+      --sidebar-heading: #5a6a8a;
+      --sidebar-active-text: #e8edf5;
+      --accent: #4f8ef7;
+      --accent-dim: #3b6ecf;
+      --content-bg: #ffffff;
+      --content-wrap-bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-primary: #1a2033;
+      --text-secondary: #4a5568;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+      --code-bg: #1e2538;
+      --code-text: #e2e8f0;
+      --code-border: #2e374f;
+      --badge-get: #2f855a;
+      --badge-get-bg: #f0fff4;
+      --badge-get-border: #9ae6b4;
+      --badge-post: #2b6cb0;
+      --badge-post-bg: #ebf8ff;
+      --badge-post-border: #90cdf4;
+      --badge-delete: #c53030;
+      --badge-delete-bg: #fff5f5;
+      --badge-delete-border: #feb2b2;
+      --badge-patch: #b7791f;
+      --badge-patch-bg: #fffbeb;
+      --badge-patch-border: #fbd38d;
+      --tag-bg: #f7f9fc;
+      --tag-border: #dde3ed;
+      --section-divider: #edf2f7;
+      --overview-card-bg: #fff;
+      --sidebar-width: 280px;
+      --top-bar-height: 56px;
+    }
+
+    body.dark {
+      --content-bg: #0f1117;
+      --content-wrap-bg: #0f1117;
+      --card-bg: #1a1f2e;
+      --card-border: #2e374f;
+      --text-primary: #e8edf5;
+      --text-secondary: #a8b4cc;
+      --text-muted: #6a7a9a;
+      --border: #2e374f;
+      --badge-get-bg: #0d2b1a;
+      --badge-get-border: #1a5c34;
+      --badge-post-bg: #0d1f3a;
+      --badge-post-border: #1a3a6e;
+      --badge-delete-bg: #2a0d0d;
+      --badge-delete-border: #6e1a1a;
+      --badge-patch-bg: #2a1f0d;
+      --badge-patch-border: #6e4e1a;
+      --tag-bg: #1e2538;
+      --tag-border: #2e374f;
+      --section-divider: #2e374f;
+      --overview-card-bg: #1e2538;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
+      color: var(--text-primary);
+      background: var(--content-wrap-bg);
+      transition: background 0.2s, color 0.2s;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* TOP BAR */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--top-bar-height);
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--sidebar-border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 100;
+      gap: 16px;
+    }
+
+    .top-bar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .top-bar-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .top-bar-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: #fff;
+    }
+
+    .top-bar-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e8edf5;
+      letter-spacing: 0.01em;
+    }
+
+    .top-bar-subtitle {
+      font-size: 12px;
+      color: var(--sidebar-text);
+      margin-top: 1px;
+    }
+
+    .top-bar-version {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--sidebar-text);
+      background: var(--sidebar-active);
+      border: 1px solid var(--sidebar-border);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .theme-toggle {
+      margin-left: 12px;
+      background: var(--sidebar-active);
+      border: 1px solid var(--sidebar-border);
+      border-radius: 8px;
+      color: var(--sidebar-text);
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle:hover {
+      background: var(--sidebar-hover);
+      color: var(--sidebar-active-text);
+    }
+
+    /* LAYOUT */
+    .layout {
+      display: flex;
+      margin-top: var(--top-bar-height);
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      top: var(--top-bar-height);
+      left: 0;
+      width: var(--sidebar-width);
+      height: calc(100vh - var(--top-bar-height));
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      overflow-y: auto;
+      padding: 20px 0 40px;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: var(--sidebar-border);
+      border-radius: 2px;
+    }
+
+    .sidebar-section {
+      margin-bottom: 8px;
+    }
+
+    .sidebar-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--sidebar-heading);
+      padding: 12px 20px 4px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      text-decoration: none;
+      color: var(--sidebar-text);
+      font-size: 13.5px;
+      border-left: 3px solid transparent;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .sidebar-link:hover {
+      background: var(--sidebar-hover);
+      color: var(--sidebar-active-text);
+    }
+
+    .sidebar-link.active {
+      background: var(--sidebar-active);
+      color: var(--sidebar-active-text);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+
+    .badge-get {
+      color: #48bb78;
+      background: rgba(72, 187, 120, 0.12);
+    }
+
+    .badge-post {
+      color: #63b3ed;
+      background: rgba(99, 179, 237, 0.12);
+    }
+
+    .badge-del {
+      color: #fc8181;
+      background: rgba(252, 129, 129, 0.12);
+    }
+
+    .badge-patch {
+      color: #f6ad55;
+      background: rgba(246, 173, 85, 0.12);
+    }
+
+    /* CONTENT */
+    .content-wrapper {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      padding: 48px 64px 80px;
+      background: var(--card-bg);
+      min-height: calc(100vh - var(--top-bar-height));
+      transition: background 0.2s;
+    }
+
+    .content {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    /* SECTIONS */
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section+.section {
+      border-top: 1px solid var(--section-divider);
+      padding-top: 64px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.75;
+      max-width: 100%;
+    }
+
+    /* ENDPOINT CARD */
+    .endpoint-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-top: 32px;
+      overflow: hidden;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--tag-bg);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .method-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid;
+      flex-shrink: 0;
+    }
+
+    .method-get {
+      color: var(--badge-get);
+      background: var(--badge-get-bg);
+      border-color: var(--badge-get-border);
+    }
+
+    .method-post {
+      color: var(--badge-post);
+      background: var(--badge-post-bg);
+      border-color: var(--badge-post-border);
+    }
+
+    .method-delete {
+      color: var(--badge-delete);
+      background: var(--badge-delete-bg);
+      border-color: var(--badge-delete-border);
+    }
+
+    .method-patch {
+      color: var(--badge-patch);
+      background: var(--badge-patch-bg);
+      border-color: var(--badge-patch-border);
+    }
+
+    .endpoint-path {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+    }
+
+    .endpoint-summary {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .endpoint-body {
+      padding: 20px 24px;
+    }
+
+    .endpoint-desc {
+      font-size: 14.5px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+      margin-bottom: 20px;
+    }
+
+    /* PARAMS TABLE */
+    .params-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    .params-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    .params-table th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--tag-bg);
+    }
+
+    .params-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--section-divider);
+      vertical-align: top;
+    }
+
+    .params-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .param-name {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 13px;
+      color: #c05621;
+      font-weight: 500;
+    }
+
+    .param-type {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 12px;
+      color: #2b6cb0;
+      background: #ebf8ff;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .param-required {
+      font-size: 11px;
+      font-weight: 600;
+      color: #c53030;
+      background: #fff5f5;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .param-optional {
+      font-size: 11px;
+      font-weight: 600;
+      color: #718096;
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .param-desc {
+      color: var(--text-secondary);
+    }
+
+    /* CODE BLOCKS */
+    .code-block-wrapper {
+      margin-top: 16px;
+    }
+
+    .code-block-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 8px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--code-text);
+    }
+
+    pre::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    pre::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    pre::-webkit-scrollbar-thumb {
+      background: var(--sidebar-border);
+      border-radius: 2px;
+    }
+
+    .json-key {
+      color: #79c0ff;
+    }
+
+    .json-str {
+      color: #a5d6ff;
+    }
+
+    .json-num {
+      color: #f69d50;
+    }
+
+    .json-bool {
+      color: #ff7b72;
+    }
+
+    .json-null {
+      color: #ff7b72;
+    }
+
+    .json-punct {
+      color: #8b949e;
+    }
+
+    .json-comment {
+      color: #6a737d;
+      font-style: italic;
+    }
+
+    /* RESPONSE CODES TABLE */
+    .response-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      margin-top: 10px;
+    }
+
+    .response-table th {
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--tag-bg);
+    }
+
+    .response-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--section-divider);
+      vertical-align: top;
+    }
+
+    .response-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-code {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+
+    .status-2xx {
+      color: #276749;
+      background: #f0fff4;
+      border: 1px solid #c6f6d5;
+    }
+
+    .status-4xx {
+      color: #9b2c2c;
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+    }
+
+    .status-5xx {
+      color: #744210;
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+    }
+
+    /* FIELDS TABLE */
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .fields-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .fields-card-header {
+      padding: 10px 14px;
+      background: var(--tag-bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .fields-card-header .doc-type-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .fields-list {
+      padding: 10px 14px;
+      list-style: none;
+    }
+
+    .fields-list li {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      padding: 3px 0;
+      border-bottom: 1px solid var(--section-divider);
+    }
+
+    .fields-list li:last-child {
+      border-bottom: none;
+    }
+
+    .fields-list li::before {
+      content: "→ ";
+      color: var(--accent);
+      font-style: normal;
+    }
+
+    /* INFO CARDS */
+    .info-card {
+      background: #f0f7ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-top: 16px;
+      font-size: 13.5px;
+      color: #1e3a5f;
+      line-height: 1.6;
+    }
+
+    .warn-card {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-top: 16px;
+      font-size: 13.5px;
+      color: #78350f;
+      line-height: 1.6;
+    }
+
+    /* OVERVIEW CARDS */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .overview-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 22px;
+      background: var(--overview-card-bg);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .overview-card:hover {
+      box-shadow: 0 4px 16px rgba(79, 142, 247, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .overview-card-icon {
+      font-size: 28px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .overview-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .overview-card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* RESPONSE CODES SECTION */
+    .response-codes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .rc-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .rc-card .rc-code {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .rc-card .rc-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+    }
+
+    .rc-card .rc-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .rc-2xx .rc-code {
+      color: #276749;
+    }
+
+    .rc-4xx .rc-code {
+      color: #9b2c2c;
+    }
+
+    .rc-5xx .rc-code {
+      color: #744210;
+    }
+
+    /* BASE URL BAR */
+    .base-url-bar {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-top: 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+    }
+
+    .base-url-label {
+      background: var(--code-bg);
+      color: var(--sidebar-text);
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-right: 1px solid var(--code-border);
+    }
+
+    .base-url-value {
+      padding: 10px 16px;
+      font-size: 14px;
+      color: var(--accent);
+      background: #f8faff;
+      flex: 1;
+    }
+
+    /* FOOTER */
+    .footer {
+      margin-left: var(--sidebar-width);
+      border-top: 1px solid var(--border);
+      padding: 24px 64px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      transition: background 0.2s;
+    }
+    .footer span:first-child {
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.03em;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        width: 220px;
+      }
+
+      .content-wrapper {
+        margin-left: 220px;
+        padding: 28px 28px 60px;
+      }
+
+      .footer {
+        margin-left: 220px;
+        padding: 16px 28px;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .fields-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .overview-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .response-codes-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP BAR -->
+  <header class="top-bar">
+    <div class="top-bar-logo">
+      <div class="top-bar-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z" />
+        </svg>
+      </div>
+      <div>
+        <div class="top-bar-title">API Trámites de Tránsito</div>
+        <div class="top-bar-subtitle">Sistema de Procesamiento de Documentos</div>
+      </div>
+    </div>
+    <div class="top-bar-version">v1.0</div>
+    <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+      <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+      <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+        <circle cx="12" cy="12" r="5" />
+        <line x1="12" y1="1" x2="12" y2="3" />
+        <line x1="12" y1="21" x2="12" y2="23" />
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+        <line x1="1" y1="12" x2="3" y2="12" />
+        <line x1="21" y1="12" x2="23" y2="12" />
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+      </svg>
+    </button>
+  </header>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Introducción</div>
+        <a href="#overview" class="sidebar-link active">Visión General</a>
+        <a href="#base-url" class="sidebar-link">URL Base</a>
+        <a href="#response-codes" class="sidebar-link">Códigos de Respuesta</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Documentos</div>
+        <a href="#get-documents" class="sidebar-link">
+          <span class="sidebar-badge badge-get">GET</span>
+          /api/documents
+        </a>
+        <a href="#delete-document" class="sidebar-link">
+          <span class="sidebar-badge badge-del">DEL</span>
+          /api/documents/:id
+        </a>
+        <a href="#patch-document" class="sidebar-link">
+          <span class="sidebar-badge badge-patch">PATCH</span>
+          /api/documents/:id
+        </a>
+        <a href="#analyze-document" class="sidebar-link">
+          <span class="sidebar-badge badge-post">POST</span>
+          /api/documents/analyze
+        </a>
+        <a href="#sync-document" class="sidebar-link">
+          <span class="sidebar-badge badge-post">POST</span>
+          /api/documents/sync/:id
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Validación</div>
+        <a href="#validate" class="sidebar-link">
+          <span class="sidebar-badge badge-post">POST</span>
+          /api/validate
+        </a>
+        <a href="#required-fields" class="sidebar-link">Campos Requeridos</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Sistema Externo</div>
+        <a href="#external-mock" class="sidebar-link">
+          <span class="sidebar-badge badge-post">POST</span>
+          /api/external-system-mock
+        </a>
+        <a href="#external-db" class="sidebar-link">
+          <span class="sidebar-badge badge-get">GET</span>
+          /api/external-system-db
+        </a>
+        <a href="#external-db-clear" class="sidebar-link">
+          <span class="sidebar-badge badge-del">DEL</span>
+          /api/external-system-db/clear
+        </a>
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="content-wrapper">
+      <main class="content">
+
+        <!-- OVERVIEW -->
+        <section class="section" id="overview">
+          <div class="section-label">Documentación</div>
+          <h1 class="section-title">API Trámites de Tránsito</h1>
+          <p class="section-desc">
+            API REST para el procesamiento automatizado de documentos de tránsito en Colombia.
+            Permite analizar imágenes de documentos con IA (Gemini), validar los datos extraídos
+            y sincronizarlos con sistemas externos de registro vehicular.
+          </p>
+
+          <div class="overview-grid">
+            <div class="overview-card">
+              <div class="overview-card-icon">&#128196;</div>
+              <div class="overview-card-title">Análisis con IA</div>
+              <div class="overview-card-desc">Extracción automática de datos mediante Gemini AI desde imágenes de
+                documentos.</div>
+            </div>
+            <div class="overview-card">
+              <div class="overview-card-icon">&#9989;</div>
+              <div class="overview-card-title">Validación</div>
+              <div class="overview-card-desc">Verificación de campos obligatorios según el tipo de documento de
+                tránsito.</div>
+            </div>
+            <div class="overview-card">
+              <div class="overview-card-icon">&#128257;</div>
+              <div class="overview-card-title">Sincronización</div>
+              <div class="overview-card-desc">Integración con sistemas externos para registro y consulta de documentos
+                procesados.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- BASE URL -->
+        <section class="section" id="base-url">
+          <h2 class="section-title">URL Base</h2>
+          <p class="section-desc">
+            Todas las rutas de la API son relativas a la URL base del servidor. En entorno de desarrollo
+            local el servidor corre en el puerto 3000 por defecto.
+          </p>
+          <div class="base-url-bar">
+            <div class="base-url-label">Base URL</div>
+            <div class="base-url-value">http://localhost:3000</div>
+          </div>
+          <div class="info-card">
+            Todos los endpoints retornan respuestas en formato <strong>JSON</strong>. Se recomienda
+            incluir el header <code
+              style="background:#dbeafe;padding:1px 5px;border-radius:4px;font-size:12.5px;">Content-Type: application/json</code>
+            en las peticiones con cuerpo.
+          </div>
+        </section>
+
+        <!-- RESPONSE CODES -->
+        <section class="section" id="response-codes">
+          <h2 class="section-title">Códigos de Respuesta HTTP</h2>
+          <p class="section-desc">La API utiliza los códigos de estado HTTP estándar para indicar el resultado de cada
+            operación.</p>
+
+          <div class="response-codes-grid">
+            <div class="rc-card rc-2xx">
+              <div class="rc-code">200</div>
+              <div class="rc-name">OK</div>
+              <div class="rc-desc">Solicitud procesada correctamente. El cuerpo contiene el recurso o resultado.</div>
+            </div>
+            <div class="rc-card rc-2xx">
+              <div class="rc-code">201</div>
+              <div class="rc-name">Created</div>
+              <div class="rc-desc">Recurso creado exitosamente. Se retorna el nuevo objeto en el cuerpo.</div>
+            </div>
+            <div class="rc-card rc-4xx">
+              <div class="rc-code">400</div>
+              <div class="rc-name">Bad Request</div>
+              <div class="rc-desc">La solicitud contiene parámetros inválidos o mal formados.</div>
+            </div>
+            <div class="rc-card rc-4xx">
+              <div class="rc-code">404</div>
+              <div class="rc-name">Not Found</div>
+              <div class="rc-desc">El recurso solicitado no fue encontrado. Verifique el ID proporcionado.</div>
+            </div>
+            <div class="rc-card rc-4xx">
+              <div class="rc-code">422</div>
+              <div class="rc-name">Unprocessable Entity</div>
+              <div class="rc-desc">El payload es válido pero faltan campos requeridos según el tipo de documento.</div>
+            </div>
+            <div class="rc-card rc-5xx">
+              <div class="rc-code">500</div>
+              <div class="rc-name">Server Error</div>
+              <div class="rc-desc">Error interno del servidor. Revise los logs para más información.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- GET /api/documents -->
+        <section class="section" id="get-documents">
+          <div class="section-label">Documentos</div>
+          <h2 class="section-title">Listar Documentos</h2>
+          <p class="section-desc">Retorna la lista de todos los documentos procesados almacenados en el sistema.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/documents</span>
+              <span class="endpoint-summary">Listar todos los documentos</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Devuelve un arreglo con todos los documentos que han sido procesados y almacenados. Cada documento
+                incluye
+                sus metadatos, tipo, datos extraídos y estado de validación.
+              </p>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Arreglo de documentos (puede ser vacío <code>[]</code> si no hay documentos).</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-5xx">500</span></td>
+                    <td>Error interno al consultar el almacenamiento.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo de respuesta — 200 OK</div>
+                <pre>[
+  <span class="json-punct">{</span>
+    <span class="json-key">"id"</span><span class="json-punct">:</span>           <span class="json-str">"doc_1718123456789"</span><span class="json-punct">,</span>
+    <span class="json-key">"tramiteId"</span><span class="json-punct">:</span>    <span class="json-str">"tramite_1718123456000"</span><span class="json-punct">,</span>
+    <span class="json-key">"fileName"</span><span class="json-punct">:</span>      <span class="json-str">"tramite_juan.pdf"</span><span class="json-punct">,</span>
+    <span class="json-key">"documentType"</span><span class="json-punct">:</span>  <span class="json-str">"cedula"</span><span class="json-punct">,</span>
+    <span class="json-key">"extractedData"</span><span class="json-punct">:</span> <span class="json-punct">{</span>
+      <span class="json-key">"nombreCompleto"</span><span class="json-punct">:</span>  <span class="json-str">"ANDREA RAMÍREZ TORRES"</span><span class="json-punct">,</span>
+      <span class="json-key">"numeroDocumento"</span><span class="json-punct">:</span> <span class="json-str">"1020456789"</span><span class="json-punct">,</span>
+      <span class="json-key">"fechaNacimiento"</span><span class="json-punct">:</span> <span class="json-str">"1995-08-14"</span><span class="json-punct">,</span>
+      <span class="json-key">"sexo"</span><span class="json-punct">:</span>            <span class="json-str">"F"</span>
+    <span class="json-punct">},</span>
+    <span class="json-key">"confidence"</span><span class="json-punct">:</span>   <span class="json-num">0.97</span><span class="json-punct">,</span>
+    <span class="json-key">"summary"</span><span class="json-punct">:</span>      <span class="json-str">"Cédula de ciudadanía de Andrea Ramírez Torres."</span><span class="json-punct">,</span>
+    <span class="json-key">"syncStatus"</span><span class="json-punct">:</span>   <span class="json-str">"pending"</span><span class="json-punct">,</span>
+    <span class="json-key">"scannedAt"</span><span class="json-punct">:</span>    <span class="json-str">"2026-06-23T14:30:00.000Z"</span><span class="json-punct">,</span>
+    <span class="json-key">"logs"</span><span class="json-punct">:</span>         <span class="json-punct">[]</span>
+  <span class="json-punct">}</span>
+<span class="json-punct">]</span></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DELETE /api/documents/:id -->
+        <section class="section" id="delete-document">
+          <h2 class="section-title">Eliminar Documento</h2>
+          <p class="section-desc">Elimina un documento procesado del sistema por su identificador único.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-delete">DELETE</span>
+              <span class="endpoint-path">/api/documents/:id</span>
+              <span class="endpoint-summary">Eliminar por ID</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Elimina permanentemente el documento con el ID especificado. Esta operación no se puede deshacer.
+              </p>
+
+              <div class="params-title">Parámetros de Ruta</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">id</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">Identificador único del documento a eliminar.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Documento eliminado exitosamente.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">404 Not Found</span></td>
+                    <td>No existe un documento con el ID proporcionado.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- PATCH /api/documents/:id -->
+        <section class="section" id="patch-document">
+          <h2 class="section-title">Actualizar Datos Extraídos</h2>
+          <p class="section-desc">Actualiza el campo <code
+              style="font-family:monospace;font-size:14px;">extractedData</code> de un documento almacenado. Usado por
+            el botón "Guardar" del panel de detalle para persistir correcciones manuales en Firestore.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-patch">PATCH</span>
+              <span class="endpoint-path">/api/documents/:id</span>
+              <span class="endpoint-summary">Guardar correcciones manuales</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Reemplaza el contenido de <code style="font-family:monospace;font-size:13px;">extractedData</code> para
+                el documento indicado sin modificar ningún otro campo (syncStatus, logs, tramiteId, etc.). Ideal para
+                corregir datos que Gemini extrajo incorrectamente.
+              </p>
+
+              <div class="params-title">Parámetros de Ruta</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">id</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">ID del documento a actualizar.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Cuerpo de la Solicitud (JSON)</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">extractedData</span></td>
+                    <td><span class="param-type">object</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">Objeto completo con los datos corregidos del documento. Sobreescribe el valor
+                      anterior.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Datos actualizados exitosamente en Firestore.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">404 Not Found</span></td>
+                    <td>No existe un documento con el ID proporcionado (solo en entorno local).</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-5xx">500</span></td>
+                    <td>Error al actualizar en Firestore.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo de solicitud — corregir cédula</div>
+                <pre><span class="json-comment">// PATCH /api/documents/doc_1718123456789</span>
+<span class="json-punct">{</span>
+  <span class="json-key">"extractedData"</span><span class="json-punct">:</span> <span class="json-punct">{</span>
+    <span class="json-key">"nombreCompleto"</span><span class="json-punct">:</span>  <span class="json-str">"ANDREA RAMÍREZ TORRES"</span><span class="json-punct">,</span>
+    <span class="json-key">"numeroDocumento"</span><span class="json-punct">:</span> <span class="json-str">"1020456789"</span><span class="json-punct">,</span>
+    <span class="json-key">"fechaNacimiento"</span><span class="json-punct">:</span> <span class="json-str">"1995-08-14"</span><span class="json-punct">,</span>
+    <span class="json-key">"sexo"</span><span class="json-punct">:</span>            <span class="json-str">"F"</span>
+  <span class="json-punct">}</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Respuesta — 200 OK</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"success"</span><span class="json-punct">:</span> <span class="json-bool">true</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="info-card">
+                Este endpoint actualiza <strong>solo</strong> el campo <code
+                  style="background:#dbeafe;padding:1px 5px;border-radius:4px;font-size:12.5px;">extractedData</code>.
+                El <code
+                  style="background:#dbeafe;padding:1px 5px;border-radius:4px;font-size:12.5px;">syncStatus</code> no
+                cambia: si el documento ya estaba sincronizado,
+                seguirá marcado como tal. Para volver a sincronizar con los datos corregidos, llame después a
+                <code
+                  style="background:#dbeafe;padding:1px 5px;border-radius:4px;font-size:12.5px;">POST /api/documents/sync/:id</code>.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- POST /api/documents/analyze -->
+        <section class="section" id="analyze-document">
+          <h2 class="section-title">Analizar Documento con IA</h2>
+          <p class="section-desc">
+            Envía un documento al motor de análisis de Gemini AI para extracción automática de datos.
+            Acepta tanto imágenes en base64 como claves de documentos de muestra predefinidos.
+          </p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/documents/analyze</span>
+              <span class="endpoint-summary">Análisis con Gemini AI</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Procesa el documento enviado y retorna el tipo de documento detectado junto con los datos estructurados
+                extraídos. Si se usa <code style="font-family:monospace;font-size:13px;">sampleKey</code>, se carga
+                un documento de muestra del sistema. Si se envía <code
+                  style="font-family:monospace;font-size:13px;">base64</code>,
+                se procesa la imagen directamente.
+              </p>
+
+              <div class="params-title">Cuerpo de la Solicitud (JSON)</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">sampleKey</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-optional">opcional</span></td>
+                    <td class="param-desc">
+                      Clave del documento de muestra a usar. Opciones:
+                      <code style="font-size:12px;font-family:monospace;">sample_cedula</code>,
+                      <code style="font-size:12px;font-family:monospace;">sample_factura</code>,
+                      <code style="font-size:12px;font-family:monospace;">sample_runt</code>,
+                      <code style="font-size:12px;font-family:monospace;">sample_gases</code>,
+                      <code style="font-size:12px;font-family:monospace;">sample_poder</code>.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><span class="param-name">fileName</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-optional">opcional</span></td>
+                    <td class="param-desc">Nombre del archivo para identificar el documento en el historial.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="param-name">base64</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-optional">opcional</span></td>
+                    <td class="param-desc">Imagen del documento codificada en Base64. Requerido si no se especifica
+                      <code style="font-family:monospace;font-size:12.5px;">sampleKey</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="param-name">mimeType</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-optional">opcional</span></td>
+                    <td class="param-desc">Tipo MIME de la imagen (ej: <code
+                        style="font-family:monospace;font-size:12.5px;">image/jpeg</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">image/png</code>). Requerido junto con <code
+                        style="font-family:monospace;font-size:12.5px;">base64</code>.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">201 Created</span></td>
+                    <td>Documento analizado y almacenado. Retorna el objeto con datos extraídos.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">400 Bad Request</span></td>
+                    <td>No se proporcionó <code>sampleKey</code> ni <code>base64</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-5xx">500</span></td>
+                    <td>Error al comunicarse con la API de Gemini o al procesar la imagen.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo con sampleKey</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"sampleKey"</span><span class="json-punct">:</span> <span class="json-str">"sample_cedula"</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo con imagen en Base64</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"fileName"</span><span class="json-punct">:</span> <span class="json-str">"runt_vehiculo.jpg"</span><span class="json-punct">,</span>
+  <span class="json-key">"mimeType"</span><span class="json-punct">:</span> <span class="json-str">"image/jpeg"</span><span class="json-punct">,</span>
+  <span class="json-key">"base64"</span><span class="json-punct">:</span> <span class="json-str">"/9j/4AAQSkZJRgABAQAAAQABAAD..."</span>
+<span class="json-punct">}</span></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- POST /api/documents/sync/:id -->
+        <section class="section" id="sync-document">
+          <h2 class="section-title">Sincronizar Documento</h2>
+          <p class="section-desc">Sincroniza un documento procesado con un sistema externo de registro.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/documents/sync/:id</span>
+              <span class="endpoint-summary">Enviar al sistema externo</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Toma el documento almacenado con el ID indicado, lo valida y lo envía al sistema externo de destino.
+                Si no se especifica <code style="font-family:monospace;font-size:13px;">targetUrl</code>, se usa la
+                URL de destino configurada por defecto en el servidor.
+              </p>
+
+              <div class="params-title">Parámetros de Ruta</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">id</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">ID del documento a sincronizar.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Cuerpo de la Solicitud (JSON)</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">targetUrl</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-optional">opcional</span></td>
+                    <td class="param-desc">URL del sistema externo destino. Si se omite, se usa el valor por defecto del
+                      servidor.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Documento sincronizado correctamente con el sistema externo.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">404 Not Found</span></td>
+                    <td>No se encontró el documento con el ID proporcionado.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">422</span></td>
+                    <td>El documento no pasó la validación de campos requeridos.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-5xx">500</span></td>
+                    <td>Error al comunicarse con el sistema externo.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- POST /api/validate -->
+        <section class="section" id="validate">
+          <div class="section-label">Validación</div>
+          <h2 class="section-title">Validar Documento</h2>
+          <p class="section-desc">
+            Verifica que el payload de un documento contiene todos los campos requeridos según su tipo.
+            Útil para validar datos antes de intentar sincronizarlos.
+          </p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/validate</span>
+              <span class="endpoint-summary">Verificar campos obligatorios</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Recibe un tipo de documento y un objeto con los datos extraídos. Retorna <strong>200 OK</strong>
+                si todos los campos requeridos están presentes, o <strong>422</strong> con la lista de campos
+                faltantes si no lo están.
+              </p>
+
+              <div class="params-title">Cuerpo de la Solicitud (JSON)</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">documentType</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">Tipo de documento: <code
+                        style="font-family:monospace;font-size:12.5px;">cedula</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">factura</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">runt</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">gases</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">poder</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="param-name">extractedData</span></td>
+                    <td><span class="param-type">object</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">Objeto con los datos extraídos del documento a validar.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Todos los campos requeridos están presentes. Documento válido.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">422</span></td>
+                    <td>Faltan campos requeridos. Se retorna el arreglo <code>missingFields</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">400 Bad Request</span></td>
+                    <td>Tipo de documento desconocido o payload malformado.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo de solicitud — cédula válida</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"documentType"</span><span class="json-punct">:</span> <span class="json-str">"cedula"</span><span class="json-punct">,</span>
+  <span class="json-key">"extractedData"</span><span class="json-punct">:</span> <span class="json-punct">{</span>
+    <span class="json-key">"nombreCompleto"</span><span class="json-punct">:</span>  <span class="json-str">"CARLOS MARIO GÓMEZ HERRERA"</span><span class="json-punct">,</span>
+    <span class="json-key">"numeroDocumento"</span><span class="json-punct">:</span> <span class="json-str">"79854123"</span><span class="json-punct">,</span>
+    <span class="json-key">"fechaNacimiento"</span><span class="json-punct">:</span> <span class="json-str">"1988-03-22"</span><span class="json-punct">,</span>
+    <span class="json-key">"sexo"</span><span class="json-punct">:</span>            <span class="json-str">"M"</span>
+  <span class="json-punct">}</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Respuesta — 200 OK</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"valid"</span><span class="json-punct">:</span> <span class="json-bool">true</span><span class="json-punct">,</span>
+  <span class="json-key">"documentType"</span><span class="json-punct">:</span> <span class="json-str">"cedula"</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo de solicitud — campos faltantes</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"documentType"</span><span class="json-punct">:</span> <span class="json-str">"cedula"</span><span class="json-punct">,</span>
+  <span class="json-key">"extractedData"</span><span class="json-punct">:</span> <span class="json-punct">{</span>
+    <span class="json-key">"nombreCompleto"</span><span class="json-punct">:</span> <span class="json-str">"CARLOS MARIO GÓMEZ HERRERA"</span>
+    <span class="json-comment">/* faltan: numeroDocumento, fechaNacimiento, sexo */</span>
+  <span class="json-punct">}</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Respuesta — 422 Unprocessable Entity</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"valid"</span><span class="json-punct">:</span>         <span class="json-bool">false</span><span class="json-punct">,</span>
+  <span class="json-key">"documentType"</span><span class="json-punct">:</span>  <span class="json-str">"cedula"</span><span class="json-punct">,</span>
+  <span class="json-key">"missingFields"</span><span class="json-punct">:</span> <span class="json-punct">[</span>
+    <span class="json-str">"numeroDocumento"</span><span class="json-punct">,</span>
+    <span class="json-str">"fechaNacimiento"</span><span class="json-punct">,</span>
+    <span class="json-str">"sexo"</span>
+  <span class="json-punct">]</span>
+<span class="json-punct">}</span></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- REQUIRED FIELDS -->
+        <section class="section" id="required-fields">
+          <h2 class="section-title">Campos Requeridos por Tipo</h2>
+          <p class="section-desc">
+            Cada tipo de documento de tránsito colombiano tiene un conjunto de campos obligatorios
+            que deben estar presentes en <code style="font-family:monospace;font-size:14px;">extractedData</code>
+            para que la validación sea exitosa.
+          </p>
+
+          <div class="fields-grid">
+            <div class="fields-card">
+              <div class="fields-card-header">
+                <span class="doc-type-badge">cedula</span>
+                Cédula de Ciudadanía
+              </div>
+              <ul class="fields-list">
+                <li>nombreCompleto</li>
+                <li>numeroDocumento</li>
+                <li>fechaNacimiento</li>
+                <li>sexo</li>
+              </ul>
+            </div>
+
+            <div class="fields-card">
+              <div class="fields-card-header">
+                <span class="doc-type-badge">factura</span>
+                Factura de Compraventa
+              </div>
+              <ul class="fields-list">
+                <li>numeroFactura</li>
+                <li>fecha</li>
+                <li>compradorNombre</li>
+                <li>compradorIdentificacion</li>
+                <li>vehiculoMarca</li>
+                <li>vehiculoLinea</li>
+                <li>vehiculoModelo</li>
+                <li>vehiculoMotor</li>
+                <li>vehiculoChasis</li>
+                <li>valorTotal</li>
+              </ul>
+            </div>
+
+            <div class="fields-card">
+              <div class="fields-card-header">
+                <span class="doc-type-badge">runt</span>
+                RUNT — Registro Único
+              </div>
+              <ul class="fields-list">
+                <li>tramiteSolicitado</li>
+                <li>propietarioNombre</li>
+                <li>propietarioIdentificacion</li>
+                <li>vehiculoMarca</li>
+                <li>vehiculoLinea</li>
+                <li>vehiculoMotor</li>
+                <li>vehiculoChasis</li>
+              </ul>
+            </div>
+
+            <div class="fields-card">
+              <div class="fields-card-header">
+                <span class="doc-type-badge">gases</span>
+                Cert. de Gases
+              </div>
+              <ul class="fields-list">
+                <li>tipoCertificado</li>
+                <li>fechaCertificado</li>
+                <li>vehiculoMarca</li>
+                <li>vehiculoChasis</li>
+                <li>vehiculoMotor</li>
+                <li>vehiculoCilindrada</li>
+              </ul>
+            </div>
+
+            <div class="fields-card">
+              <div class="fields-card-header">
+                <span class="doc-type-badge">poder</span>
+                Poder Notarial
+              </div>
+              <ul class="fields-list">
+                <li>otorganteNombre</li>
+                <li>otorganteIdentificacion</li>
+                <li>apoderadoNombre</li>
+                <li>tramitesAutorizados</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- POST /api/external-system-mock -->
+        <section class="section" id="external-mock">
+          <div class="section-label">Sistema Externo</div>
+          <h2 class="section-title">Registrar en Sistema Externo</h2>
+          <p class="section-desc">
+            Endpoint simulado del sistema externo de destino. Recibe el payload completo del documento,
+            valida los campos requeridos y lo registra en la base de datos del sistema de destino.
+          </p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/external-system-mock</span>
+              <span class="endpoint-summary">Simular recepción en sistema destino</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Actúa como el receptor en el sistema de destino. Valida que el payload contenga
+                <code style="font-family:monospace;font-size:13px;">documentType</code> y
+                <code style="font-family:monospace;font-size:13px;">extractedData</code> con todos los campos
+                requeridos para el tipo indicado. Si la validación es exitosa, almacena el registro.
+              </p>
+
+              <div class="params-title">Cuerpo de la Solicitud (JSON)</div>
+              <table class="params-table">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Requerido</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="param-name">documentType</span></td>
+                    <td><span class="param-type">string</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">Tipo de documento: <code
+                        style="font-family:monospace;font-size:12.5px;">cedula</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">factura</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">runt</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">gases</code>, <code
+                        style="font-family:monospace;font-size:12.5px;">poder</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="param-name">extractedData</span></td>
+                    <td><span class="param-type">object</span></td>
+                    <td><span class="param-required">requerido</span></td>
+                    <td class="param-desc">Objeto con los datos extraídos del documento. Debe incluir todos los campos
+                      requeridos según el tipo.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">201 Created</span></td>
+                    <td>Documento registrado exitosamente en el sistema externo.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">422</span></td>
+                    <td>Campos requeridos faltantes en <code>extractedData</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-4xx">400 Bad Request</span></td>
+                    <td>El <code>documentType</code> no es reconocido o el payload está malformado.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo de solicitud — registro de factura</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"documentType"</span><span class="json-punct">:</span> <span class="json-str">"factura"</span><span class="json-punct">,</span>
+  <span class="json-key">"extractedData"</span><span class="json-punct">:</span> <span class="json-punct">{</span>
+    <span class="json-key">"numeroFactura"</span><span class="json-punct">:</span>            <span class="json-str">"FCV-2026-00142"</span><span class="json-punct">,</span>
+    <span class="json-key">"fecha"</span><span class="json-punct">:</span>                    <span class="json-str">"2026-06-15"</span><span class="json-punct">,</span>
+    <span class="json-key">"compradorNombre"</span><span class="json-punct">:</span>          <span class="json-str">"LUIS FERNANDO OSPINA"</span><span class="json-punct">,</span>
+    <span class="json-key">"compradorIdentificacion"</span><span class="json-punct">:</span>  <span class="json-str">"8820134"</span><span class="json-punct">,</span>
+    <span class="json-key">"vehiculoMarca"</span><span class="json-punct">:</span>            <span class="json-str">"CHEVROLET"</span><span class="json-punct">,</span>
+    <span class="json-key">"vehiculoLinea"</span><span class="json-punct">:</span>            <span class="json-str">"SPARK GT"</span><span class="json-punct">,</span>
+    <span class="json-key">"vehiculoModelo"</span><span class="json-punct">:</span>           <span class="json-num">2024</span><span class="json-punct">,</span>
+    <span class="json-key">"vehiculoMotor"</span><span class="json-punct">:</span>            <span class="json-str">"MTR-4B12-0045678"</span><span class="json-punct">,</span>
+    <span class="json-key">"vehiculoChasis"</span><span class="json-punct">:</span>           <span class="json-str">"9BWZZZ377VT004251"</span><span class="json-punct">,</span>
+    <span class="json-key">"valorTotal"</span><span class="json-punct">:</span>              <span class="json-num">58500000</span>
+  <span class="json-punct">}</span>
+<span class="json-punct">}</span></pre>
+              </div>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Respuesta — 201 Created</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"success"</span><span class="json-punct">:</span>    <span class="json-bool">true</span><span class="json-punct">,</span>
+  <span class="json-key">"registerId"</span><span class="json-punct">:</span> <span class="json-str">"ext_1750688400123"</span><span class="json-punct">,</span>
+  <span class="json-key">"receivedAt"</span><span class="json-punct">:</span> <span class="json-str">"2026-06-23T14:40:00.123Z"</span>
+<span class="json-punct">}</span></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- GET /api/external-system-db -->
+        <section class="section" id="external-db">
+          <h2 class="section-title">Consultar Base de Datos Destino</h2>
+          <p class="section-desc">Retorna todos los registros almacenados en la base de datos del sistema externo de
+            destino.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/external-system-db</span>
+              <span class="endpoint-summary">Obtener registros del destino</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Devuelve todos los documentos que han sido registrados exitosamente en el sistema externo
+                mediante el endpoint <code
+                  style="font-family:monospace;font-size:13px;">/api/external-system-mock</code>.
+              </p>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Arreglo con todos los registros almacenados (puede ser vacío).</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-5xx">500</span></td>
+                    <td>Error interno al consultar la base de datos.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Ejemplo de respuesta — 200 OK</div>
+                <pre><span class="json-punct">[</span>
+  <span class="json-punct">{</span>
+    <span class="json-key">"registerId"</span><span class="json-punct">:</span>   <span class="json-str">"ext_1750688400123"</span><span class="json-punct">,</span>
+    <span class="json-key">"documentType"</span><span class="json-punct">:</span> <span class="json-str">"factura"</span><span class="json-punct">,</span>
+    <span class="json-key">"extractedData"</span><span class="json-punct">:</span> <span class="json-punct">{</span> <span class="json-comment">/* ... */</span> <span class="json-punct">},</span>
+    <span class="json-key">"receivedAt"</span><span class="json-punct">:</span>   <span class="json-str">"2026-06-23T14:40:00.123Z"</span>
+  <span class="json-punct">}</span>
+<span class="json-punct">]</span></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DELETE /api/external-system-db/clear -->
+        <section class="section" id="external-db-clear">
+          <h2 class="section-title">Limpiar Base de Datos Destino</h2>
+          <p class="section-desc">Elimina todos los registros almacenados en la base de datos del sistema externo.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge method-delete">DELETE</span>
+              <span class="endpoint-path">/api/external-system-db/clear</span>
+              <span class="endpoint-summary">Vaciar base de datos destino</span>
+            </div>
+            <div class="endpoint-body">
+              <p class="endpoint-desc">
+                Borra todos los registros del sistema externo de destino. Útil para reiniciar el estado
+                durante pruebas o en ambientes de desarrollo.
+              </p>
+
+              <div class="warn-card">
+                Esta operación es <strong>irreversible</strong>. Todos los registros del sistema de destino
+                serán eliminados permanentemente.
+              </div>
+
+              <div class="params-title">Respuestas</div>
+              <table class="response-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="status-code status-2xx">200 OK</span></td>
+                    <td>Base de datos vaciada exitosamente.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="status-code status-5xx">500</span></td>
+                    <td>Error interno al intentar limpiar la base de datos.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="code-block-wrapper">
+                <div class="code-block-label">Respuesta — 200 OK</div>
+                <pre><span class="json-punct">{</span>
+  <span class="json-key">"cleared"</span><span class="json-punct">:</span> <span class="json-bool">true</span><span class="json-punct">,</span>
+  <span class="json-key">"deletedCount"</span><span class="json-punct">:</span> <span class="json-num">5</span>
+<span class="json-punct">}</span></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div><!-- end content-wrapper -->
+  </div><!-- end layout -->
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <span>DivergencyAI</span>
+    <span>Todos los derechos reservados &copy; 2026</span>
+  </footer>
+
+  <script>
+    // Active sidebar link on scroll
+    (function () {
+      var links = document.querySelectorAll('.sidebar-link[href^="#"]');
+      var sections = [];
+      links.forEach(function (l) {
+        var id = l.getAttribute('href').slice(1);
+        var el = document.getElementById(id);
+        if (el) sections.push({ id: id, el: el, link: l });
+      });
+
+      function onScroll() {
+        var scrollY = window.scrollY + 80;
+        var active = sections[0];
+        for (var i = 0; i < sections.length; i++) {
+          if (sections[i].el.offsetTop <= scrollY) {
+            active = sections[i];
+          }
+        }
+        links.forEach(function (l) { l.classList.remove('active'); });
+        if (active) active.link.classList.add('active');
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('theme-toggle');
+      var iconMoon = document.getElementById('icon-moon');
+      var iconSun = document.getElementById('icon-sun');
+
+      function applyTheme(dark) {
+        if (dark) {
+          document.body.classList.add('dark');
+          iconMoon.style.display = 'none';
+          iconSun.style.display = '';
+        } else {
+          document.body.classList.remove('dark');
+          iconMoon.style.display = '';
+          iconSun.style.display = 'none';
+        }
+      }
+
+      var saved = localStorage.getItem('api-docs-theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(saved === 'dark' || (!saved && prefersDark));
+
+      btn.addEventListener('click', function () {
+        var isDark = document.body.classList.contains('dark');
+        applyTheme(!isDark);
+        localStorage.setItem('api-docs-theme', !isDark ? 'dark' : 'light');
+      });
+    })();
+  </script>
+
+</body>
+
+</html>

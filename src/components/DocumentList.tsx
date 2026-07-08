@@ -3,102 +3,141 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { DocumentRecord } from "../types";
-import { ListFilter, Clock, CheckCircle2, XCircle, AlertCircle, Trash, Eye, Search } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, AlertCircle, Trash, Search, User, ChevronDown, ChevronUp } from "lucide-react";
 
 interface DocumentListProps {
   documents: DocumentRecord[];
   activeId: string | undefined;
   onSelect: (id: string) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
+  onDeleteTramite: (tramiteId: string) => void;
 }
 
-export default function DocumentList({
-  documents,
-  activeId,
-  onSelect,
-  onDelete,
-}: DocumentListProps) {
+interface TramiteGroup {
+  tramiteId: string;
+  clientName: string;
+  docs: DocumentRecord[];
+  scannedAt: string;
+  syncSummary: "success" | "pending" | "failed" | "mixed";
+}
+
+function getClientName(docs: DocumentRecord[]): string {
+  const cedula = docs.find((d) => d.documentType === "cedula");
+  if (cedula?.extractedData?.nombreCompleto) return cedula.extractedData.nombreCompleto;
+  const factura = docs.find((d) => d.documentType === "factura");
+  if (factura?.extractedData?.compradorNombre) return factura.extractedData.compradorNombre;
+  const poder = docs.find((d) => d.documentType === "poder");
+  if (poder?.extractedData?.otorganteNombre) return poder.extractedData.otorganteNombre;
+  const runt = docs.find((d) => d.documentType === "runt");
+  if (runt?.extractedData?.propietarioNombre) return runt.extractedData.propietarioNombre;
+  return docs[0]?.fileName || "Trámite sin nombre";
+}
+
+function getSyncSummary(docs: DocumentRecord[]): TramiteGroup["syncSummary"] {
+  const statuses = docs.map((d) => d.syncStatus);
+  if (statuses.every((s) => s === "success")) return "success";
+  if (statuses.every((s) => s === "pending")) return "pending";
+  if (statuses.some((s) => s === "failed")) return "failed";
+  return "mixed";
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  cedula: "CC",
+  factura: "FAC",
+  runt: "RUNT",
+  gases: "GAS",
+  poder: "POD",
+  desconocido: "???",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  cedula: "bg-indigo-100 text-indigo-700",
+  factura: "bg-emerald-100 text-emerald-700",
+  runt: "bg-blue-100 text-blue-700",
+  gases: "bg-teal-100 text-teal-700",
+  poder: "bg-purple-100 text-purple-700",
+  desconocido: "bg-slate-100 text-slate-600",
+};
+
+export default function DocumentList({ documents, activeId, onSelect, onDelete, onDeleteTramite }: DocumentListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  const getSyncStatusBadge = (status: "pending" | "success" | "failed") => {
-    switch (status) {
-      case "success":
-        return (
-          <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            Sincronizado
-          </span>
-        );
-      case "failed":
-        return (
-          <span className="text-[10px] font-semibold bg-rose-50 text-rose-700 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1">
-            <XCircle className="w-3 h-3 text-rose-500" />
-            Fallo API
-          </span>
-        );
-      default:
-        return (
-          <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded border border-amber-100 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 text-amber-500 " />
-            Pendiente
-          </span>
-        );
-    }
-  };
+  const hasActiveFilters = searchTerm || selectedType || selectedStatus;
 
   const formatDate = (isoStr: string) => {
     try {
       const date = new Date(isoStr);
-      return date.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) + " (" + date.toLocaleDateString("es-CO", { day: "numeric", month: "short" }) + ")";
-    } catch (e) {
-      return "Hace poco";
+      return (
+        date.toLocaleDateString("es-CO", { day: "numeric", month: "short" }) +
+        " · " +
+        date.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })
+      );
+    } catch {
+      return "Fecha desconocida";
     }
   };
 
-  // Filter logic
-  const filteredDocuments = documents.filter((doc) => {
-    // Search in fileName, summary, or documentType content
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch =
-      !searchTerm ||
-      doc.fileName.toLowerCase().includes(searchLower) ||
-      (doc.summary && doc.summary.toLowerCase().includes(searchLower)) ||
-      doc.documentType.toLowerCase().includes(searchLower);
+  const toggleGroup = (tramiteId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(tramiteId) ? next.delete(tramiteId) : next.add(tramiteId);
+      return next;
+    });
+  };
 
-    const matchesType = !selectedType || doc.documentType === selectedType;
-    const matchesStatus = !selectedStatus || doc.syncStatus === selectedStatus;
+  // Filtered flat list (used when filters are active)
+  const filteredDocs = useMemo(() => {
+    return documents.filter((doc) => {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        !searchTerm ||
+        doc.fileName.toLowerCase().includes(searchLower) ||
+        (doc.summary && doc.summary.toLowerCase().includes(searchLower)) ||
+        doc.documentType.toLowerCase().includes(searchLower);
+      const matchesType = !selectedType || doc.documentType === selectedType;
+      const matchesStatus = !selectedStatus || doc.syncStatus === selectedStatus;
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [documents, searchTerm, selectedType, selectedStatus]);
 
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  // Grouped view (used when no filters active)
+  const groups = useMemo<TramiteGroup[]>(() => {
+    const map = new Map<string, DocumentRecord[]>();
+    documents.forEach((doc) => {
+      const key = doc.tramiteId || doc.id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(doc);
+    });
+    return Array.from(map.entries())
+      .map(([tramiteId, docs]) => ({
+        tramiteId,
+        clientName: getClientName(docs),
+        docs,
+        scannedAt: docs[0].scannedAt,
+        syncSummary: getSyncSummary(docs),
+      }))
+      .sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+  }, [documents]);
 
-  const hasActiveFilters = searchTerm || selectedType || selectedStatus;
+  const getSyncBadge = (status: string, small = false) => {
+    const base = small ? "text-[9px] px-1.5 py-0.5" : "text-[10px] px-2 py-0.5";
+    if (status === "success")
+      return <span className={`${base} font-semibold bg-emerald-50 text-emerald-700 rounded border border-emerald-100 flex items-center gap-1`}><CheckCircle2 className="w-3 h-3" />Sincronizado</span>;
+    if (status === "failed")
+      return <span className={`${base} font-semibold bg-rose-50 text-rose-700 rounded border border-rose-100 flex items-center gap-1`}><XCircle className="w-3 h-3" />Fallo</span>;
+    if (status === "mixed")
+      return <span className={`${base} font-semibold bg-amber-50 text-amber-700 rounded border border-amber-100 flex items-center gap-1`}><AlertCircle className="w-3 h-3" />Parcial</span>;
+    return <span className={`${base} font-semibold bg-amber-50 text-amber-700 rounded border border-amber-100 flex items-center gap-1`}><AlertCircle className="w-3 h-3" />Pendiente</span>;
+  };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm [content-visibility:auto]">
-      <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-        <h3 className="text-sm font-bold uppercase tracking-tight text-slate-700 flex items-center gap-2">
-          <ListFilter className="w-4 h-4 text-slate-500" />
-          Historial de Documentos
-          {hasActiveFilters ? (
-            <span className="text-xs text-blue-600 font-medium normal-case">
-              ({filteredDocuments.length} de {documents.length})
-            </span>
-          ) : (
-            <span className="text-xs text-slate-400 font-medium normal-case">
-              ({documents.length})
-            </span>
-          )}
-        </h3>
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-          Últimos escaneados
-        </span>
-      </div>
-
-      {/* Buscador y Filtros Interactivos */}
+    <div className="bg-white dark:bg-slate-800 p-4">
+      {/* Buscador y Filtros */}
       <div className="space-y-2 mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -107,133 +146,151 @@ export default function DocumentList({
             placeholder="Buscar por nombre, tipo o resumen..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-sans"
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
         </div>
-
         <div className="grid grid-cols-2 gap-2">
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-          >
+          <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}
+            className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
             <option value="">Tipo: Todos</option>
-            <option value="cedula">Cédula de Ciudadanía</option>
-            <option value="factura">Factura de Venta</option>
-            <option value="runt">Formulario RUNT</option>
-            <option value="gases">Revisión de Gases</option>
-            <option value="poder">Poder de Trámite</option>
+            <option value="cedula">Cédula</option>
+            <option value="factura">Factura</option>
+            <option value="runt">RUNT</option>
+            <option value="gases">Gases</option>
+            <option value="poder">Poder</option>
           </select>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-          >
+          <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}
+            className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
             <option value="">Sincronización: Todas</option>
             <option value="pending">Pendientes</option>
             <option value="success">Sincronizados</option>
             <option value="failed">Fallo API</option>
           </select>
         </div>
-
         {hasActiveFilters && (
-          <div className="flex items-center justify-between text-[10px] text-slate-500 bg-slate-50 px-2.5 py-1 border border-slate-200/50 rounded-lg font-semibold">
-            <span>Resultados de búsqueda: {filteredDocuments.length} encontrado(s)</span>
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedType("");
-                setSelectedStatus("");
-              }}
-              className="text-blue-600 hover:text-blue-500 font-bold uppercase tracking-wider text-[9px] hover:underline cursor-pointer"
-            >
-              Limpiar filtros
+          <div className="flex items-center justify-between text-[10px] text-slate-500 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 border border-slate-200/50 rounded-lg font-semibold">
+            <span>{filteredDocs.length} resultado(s)</span>
+            <button onClick={() => { setSearchTerm(""); setSelectedType(""); setSelectedStatus(""); }}
+              className="text-blue-600 hover:underline font-bold uppercase text-[9px] cursor-pointer">
+              Limpiar
             </button>
           </div>
         )}
       </div>
 
-      {filteredDocuments.length === 0 ? (
-        <div className="text-center py-10 border border-dashed border-slate-100 rounded-xl">
-          <p className="text-xs text-slate-400 font-medium">
-            {hasActiveFilters 
-              ? "Ningún documento de la sesión coincide con los filtros." 
-              : "No hay documentos registrados para escanear en esta sesión."}
-          </p>
-          {hasActiveFilters && (
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedType("");
-                setSelectedStatus("");
-              }}
-              className="mt-2 text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
-            >
-              Restablecer filtros de búsqueda
+      {/* Vista con filtros activos — lista plana */}
+      {hasActiveFilters ? (
+        filteredDocs.length === 0 ? (
+          <div className="text-center py-8 border border-dashed border-slate-200 rounded-xl">
+            <p className="text-xs text-slate-400">Ningún documento coincide con los filtros.</p>
+            <button onClick={() => { setSearchTerm(""); setSelectedType(""); setSelectedStatus(""); }}
+              className="mt-2 text-[11px] font-bold text-blue-600 hover:underline cursor-pointer">
+              Restablecer filtros
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+            {filteredDocs.map((doc) => (
+              <FlatDocRow key={doc.id} doc={doc} isActive={doc.id === activeId} onSelect={onSelect} onDelete={onDelete} getSyncBadge={getSyncBadge} />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-          {filteredDocuments.map((doc) => {
-            const isActive = doc.id === activeId;
-            return (
-              <div
-                key={doc.id}
-                onClick={() => onSelect(doc.id)}
-                className={`group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-slate-50 border-blue-400 shadow-xs"
-                    : "bg-white border-slate-150 hover:border-slate-300 hover:scale-[1.005]"
-                }`}
-                id={`document-list-item-${doc.id}`}
-              >
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
-                      doc.documentType === 'cedula' ? 'bg-amber-100 text-amber-800' :
-                      doc.documentType === 'factura' ? 'bg-emerald-100 text-emerald-800' :
-                      doc.documentType === 'runt' ? 'bg-blue-100 text-blue-800' :
-                      doc.documentType === 'gases' ? 'bg-teal-100 text-teal-800' :
-                      doc.documentType === 'poder' ? 'bg-purple-100 text-purple-800' :
-                      'bg-slate-100 text-slate-800'
-                    }`}>
-                      {doc.documentType}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-700 truncate block group-hover:text-blue-600 transition-colors">
-                      {doc.fileName}
-                    </span>
+        /* Vista agrupada por trámite */
+        groups.length === 0 ? (
+          <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-600 rounded-xl">
+            <p className="text-xs text-slate-400">No hay documentos registrados en esta sesión.</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+            {groups.map((group) => {
+              const isExpanded = expandedGroups.has(group.tramiteId);
+              const hasActive = group.docs.some((d) => d.id === activeId);
+              return (
+                <div key={group.tramiteId} className={`rounded-xl border transition-all ${hasActive ? "border-blue-300 dark:border-blue-600" : "border-slate-200 dark:border-slate-700"}`}>
+                  {/* Cabecera del grupo */}
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => { toggleGroup(group.tramiteId); if (!isExpanded) onSelect(group.docs[0].id); }}
+                      className="flex-1 flex items-center justify-between px-3 py-2.5 rounded-tl-xl rounded-bl-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="bg-blue-100 dark:bg-blue-900/40 p-1.5 rounded-lg shrink-0">
+                          <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{group.clientName}</p>
+                          <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />{formatDate(group.scannedAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        {getSyncBadge(group.syncSummary, true)}
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                          {group.docs.length}
+                        </span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteTramite(group.tramiteId); }}
+                      className="px-2.5 py-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-tr-xl rounded-br-xl transition-colors shrink-0"
+                      title="Eliminar trámite completo"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  
-                  <p className="text-[11px] text-slate-500 line-clamp-1 mb-1 font-medium">
-                    {doc.summary}
-                  </p>
 
-                  <div className="flex items-center gap-2.5 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1 font-mono">
-                      <Clock className="w-3 h-3 text-slate-300" />
-                      {formatDate(doc.scannedAt)}
-                    </span>
-                  </div>
+                  {/* Documentos del grupo (expandidos) */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 dark:border-slate-700 divide-y divide-slate-50 dark:divide-slate-700/50">
+                      {group.docs.map((doc) => (
+                        <FlatDocRow key={doc.id} doc={doc} isActive={doc.id === activeId} onSelect={onSelect} onDelete={onDelete} getSyncBadge={getSyncBadge} compact />
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {getSyncStatusBadge(doc.syncStatus)}
-                  <button
-                    onClick={(e) => onDelete(doc.id, e)}
-                    className="p-1 px-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors ml-1.5 cursor-pointer"
-                    title="Eliminar registro"
-                    id={`btn-delete-doc-${doc.id}`}
-                  >
-                    <Trash className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
+    </div>
+  );
+}
+
+function FlatDocRow({ doc, isActive, onSelect, onDelete, getSyncBadge, compact = false }: {
+  doc: DocumentRecord; isActive: boolean; onSelect: (id: string) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+  getSyncBadge: (status: string, small?: boolean) => React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      onClick={() => onSelect(doc.id)}
+      className={`flex items-center justify-between ${compact ? "px-3 py-2" : "p-3 rounded-xl border"} transition-all cursor-pointer ${
+        isActive
+          ? compact ? "bg-blue-50 dark:bg-slate-700" : "bg-blue-50 dark:bg-slate-700 border-blue-400"
+          : compact ? "hover:bg-slate-50 dark:hover:bg-slate-700/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300"
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLORS[doc.documentType] || TYPE_COLORS.desconocido}`}>
+          {TYPE_LABELS[doc.documentType] || "???"}
+        </span>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-medium">{doc.summary || doc.fileName}</p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+        {getSyncBadge(doc.syncStatus, true)}
+        <button
+          onClick={(e) => onDelete(doc.id, e)}
+          className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+          title="Eliminar"
+        >
+          <Trash className="w-3 h-3" />
+        </button>
+      </div>
     </div>
   );
 }
